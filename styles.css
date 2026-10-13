@@ -337,7 +337,7 @@ body {
 
 /* --- Phase 1: Explode Intro Section (Monumental Kinetic Backdrop Typography) --- */
 .explode-intro-section {
-  min-height: 220vh; /* Extended slow Z-explosion */
+  min-height: 300vh; /* Extended slow pure-Z explosion */
   position: relative;
   padding: 0;
   display: flex;
@@ -360,9 +360,9 @@ body {
 }
 .explode-backdrop-text {
   font-size: clamp(3rem, 7.5vw, 7.5rem);
-  font-weight: 200;
-  letter-spacing: -0.04em;
-  color: rgba(24, 27, 30, 0.08);
+  font-weight: 300;
+  letter-spacing: -0.035em;
+  color: rgba(24, 27, 30, 0.24); /* Clearly readable kinetic backdrop */
   line-height: 1.0;
   white-space: nowrap;
   user-select: none;
@@ -371,7 +371,7 @@ body {
   font-family: var(--font-mono);
   font-size: clamp(0.72rem, 1.1vw, 0.95rem);
   letter-spacing: 0.22em;
-  color: rgba(24, 27, 30, 0.25);
+  color: rgba(24, 27, 30, 0.48);
   margin-top: 1.25rem;
   text-transform: uppercase;
   user-select: none;
@@ -391,24 +391,29 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  max-width: 480px;
+  max-width: min(480px, 42vw);
   position: relative;
   z-index: 10;
-  background: rgba(253, 253, 253, 0.65);
-  backdrop-filter: blur(8px);
+  background: rgba(253, 253, 253, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   padding: 1.75rem 2rem;
   border-radius: 8px;
   border: 1px solid var(--hairline);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
   pointer-events: auto;
+  word-break: break-word;
+  overflow: visible;
 }
 
 .block-left {
   grid-column: 1 / span 5;
+  margin-left: 2rem;
 }
 .block-right {
   grid-column: 8 / span 5;
   justify-self: end;
+  margin-right: 2.5rem;
 }
 
 .chapter-number {
@@ -427,10 +432,11 @@ body {
 }
 
 .chapter-heading {
-  font-size: clamp(2.8rem, 5.5vw, 5.5rem);
+  font-size: clamp(2.4rem, 4.4vw, 4.2rem);
   font-weight: 300;
-  letter-spacing: -0.04em;
-  line-height: 0.95;
+  letter-spacing: -0.035em;
+  line-height: 1.0;
+  word-break: break-word;
 }
 .chapter-heading strong {
   font-weight: 700;
@@ -549,74 +555,9 @@ body {
   pointer-events: auto;
 }
 
-/* 3D Hotspot Overlays (Clean Architecture, No Flickering Rings) */
-.hotspot {
-  position: absolute;
-  width: 24px;
-  height: 24px;
-  transform: translate(-50%, -50%);
-  cursor: pointer;
-  z-index: 20;
-  pointer-events: auto;
-}
-.hotspot-core {
-  position: absolute;
-  inset: 4px;
-  border-radius: 50%;
-  background: var(--leica-red);
-  border: 2px solid #FFF;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-  transition: transform 0.2s var(--ease-out-expo);
-}
-.hotspot:hover .hotspot-core {
-  transform: scale(1.4);
-}
-
-.hotspot-card {
-  position: absolute;
-  left: 32px;
-  top: 50%;
-  transform: translateY(-50%) translateX(10px);
-  width: 240px;
-  padding: 1rem 1.25rem;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--hairline-strong);
-  border-radius: 8px;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.08);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease, transform 0.3s ease;
-}
-.hotspot:hover .hotspot-card {
-  opacity: 1;
-  transform: translateY(-50%) translateX(0);
-}
-.hotspot-card-title {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--leica-red);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin-bottom: 0.25rem;
-}
-.hotspot-card-body {
-  font-size: 0.85rem;
-  color: var(--ink-secondary);
-  line-height: 1.4;
-}
-.hotspot-card-action {
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  color: var(--leica-red);
-  margin-top: 0.5rem;
-  font-weight: 500;
-}
-
 /* --- Phase 4: Outro Showcase (Vertical Stack Layout) --- */
 .outro-section {
-  min-height: 140vh;
+  min-height: 180vh; /* Lengthened slow turntable outro */
   display: flex;
   flex-direction: column;
   justify-content: flex-end; /* Top 55% reserved for 3D model, bottom 45% for typography */
@@ -747,6 +688,8 @@ body {
     grid-column: 1 / span 12;
     justify-self: start;
     max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
   }
   .gauge-stats-row {
     grid-template-columns: 1fr;
