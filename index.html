@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Leica M11 — The Essence of Pure Photography</title>
-  <link rel="stylesheet" href="styles.css?v=15">
+  <link rel="stylesheet" href="styles.css?v=16">
   
   <!-- Preconnect and Fonts: Outfit (Engineered Grotesk) & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
 
   <!-- Force Scroll Position to Top & Disable Scroll Restoration -->
   <script>
@@ -52,7 +52,6 @@
     </div>
   </div>
 
-
   <!-- Monumental Backdrop Typography (Layered Behind 3D Canvas) -->
   <div class="backdrop-watermark" aria-hidden="true">
     <div class="watermark-inner" id="watermark-inner">LEICA M11</div>
@@ -66,7 +65,13 @@
     <div class="grid-col"></div><div class="grid-col"></div><div class="grid-col"></div>
   </div>
 
-  <!-- Fixed Three.js WebGL Canvas -->
+  <!-- Dynamic Hairline Leader Line Overlay (SVG Projected Reticle) -->
+  <svg class="leader-line-svg" id="leader-line-svg" xmlns="http://www.w3.org/2000/svg">
+    <line id="leader-line" x1="0" y1="0" x2="0" y2="0" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>
+    <circle id="leader-point" cx="0" cy="0" r="3" fill="#E00613" opacity="0"/>
+  </svg>
+
+  <!-- Fixed Three.js WebGL Canvas (Z-Index: 2) -->
   <div id="webgl-container">
     <canvas id="webgl-canvas"></canvas>
   </div>
@@ -76,7 +81,7 @@
        ====================================================================== -->
   <main class="scroll-container" id="scroll-container">
 
-    <!-- Phase 1: Hero Overview -->
+    <!-- Phase 0: Hero Overview (Elevated Front-High 25°) -->
     <section class="content-section hero-section" id="hero">
       <div class="hero-bottom-left">
         <h1 class="hero-title">
@@ -97,7 +102,7 @@
       </div>
     </section>
 
-    <!-- Phase 1: Monumental Kinetic Backdrop & Extended Z-Explosion -->
+    <!-- Phase 1: Monumental Kinetic Backdrop & Coaxial Pure-Z Explosion -->
     <section class="content-section explode-intro-section" id="explode-intro">
       <div class="explode-backdrop-wrap">
         <h2 class="explode-backdrop-text">66 PRECISION COMPONENTS</h2>
@@ -105,9 +110,9 @@
       </div>
     </section>
 
-    <!-- Phase 2: Chapter 1 — Bayonet & Lens Cap (Model Right, Text Left) -->
+    <!-- Phase 2: Chapter 1 — Bayonet & Front Module (Model Right, Text Left) -->
     <section class="content-section chapter-section" id="chapter-bayonet">
-      <div class="editorial-block block-left">
+      <div class="editorial-block block-left" id="card-bayonet">
         <div class="chapter-number">CHAPTER <span>01</span> // COUPLING</div>
         <h2 class="chapter-heading">
           BAYONET
@@ -125,9 +130,9 @@
       </div>
     </section>
 
-    <!-- Phase 2: Chapter 2 — 60MP BSI Sensor (Model Left, Text Right — Full White Gallery) -->
+    <!-- Phase 2: Chapter 2 — 60MP BSI Sensor Core (Model Left, Text Right — 100% Full White Gallery) -->
     <section class="content-section chapter-section" id="chapter-sensor">
-      <div class="editorial-block block-right">
+      <div class="editorial-block block-right" id="card-sensor">
         <div class="chapter-number">CHAPTER <span>02</span> // SENSOR ENGINE</div>
         <h2 class="chapter-heading nowrap-heading">
           TRIPLE
@@ -146,9 +151,9 @@
       </div>
     </section>
 
-    <!-- Phase 2: Chapter 3 — Tactile Controls (Model Centered, Text Left) -->
+    <!-- Phase 2: Chapter 3 — Tactile Controls & Solid Top Deck (Model Centered, Text Left) -->
     <section class="content-section chapter-section" id="chapter-dials">
-      <div class="editorial-block block-left">
+      <div class="editorial-block block-left" id="card-dials">
         <div class="chapter-number">CHAPTER <span>03</span> // INTERFACE</div>
         <h2 class="chapter-heading nowrap-heading">
           TACTILE
@@ -166,10 +171,28 @@
       </div>
     </section>
 
-    <!-- Phase 3: Seamless Reassembly Snap -->
+    <!-- Phase 4: Free-style Kinetic Metric Row (60 MP / ±0.02 mm / ISO 64 — Layered Under 3D Glide) -->
+    <section class="content-section freestyle-section" id="chapter-rangefinder">
+      <div class="freestyle-metrics-container">
+        <div class="freestyle-metric-item">
+          <span class="freestyle-val tabular-nums">60 MP</span>
+          <span class="freestyle-lbl">[ MAXIMUM RESOLUTION ]</span>
+        </div>
+        <div class="freestyle-metric-item">
+          <span class="freestyle-val tabular-nums">±0.02 mm</span>
+          <span class="freestyle-lbl">[ FLANGE TOLERANCE ]</span>
+        </div>
+        <div class="freestyle-metric-item">
+          <span class="freestyle-val tabular-nums">ISO 64</span>
+          <span class="freestyle-lbl">[ BASE SENSITIVITY ]</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Phase 5: Seamless Reassembly Snap & Interactive 3D Hotspots -->
     <section class="content-section assembled-section" id="section-assembled">
       <div class="assembled-sticky-text">
-        <div class="chapter-number">PHASE <span>03</span> // SYNTHESIS</div>
+        <div class="chapter-number">PHASE <span>04</span> // SYNTHESIS</div>
         <h2 class="chapter-heading nowrap-heading">
           SEAMLESS
           <strong>REASSEMBLY</strong>
@@ -179,46 +202,37 @@
           When brought together, all 66 components fuse into a singular, weather-sealed instrument weighing just 530 grams.
         </p>
       </div>
-    </section>
 
-    <!-- Phase 3: Chapter 4 — Drone Riotters Style Metric Floor (Model Top Perch, Stats Bottom) -->
-    <section class="content-section gauge-section drone-riotters-section" id="chapter-rangefinder">
-      <div class="gauge-hud-wrapper drone-hud-wrapper">
-        <!-- Technical Arc SVG Gauge curved above the stats row -->
-        <svg class="gauge-arc-svg drone-arc-svg" viewBox="0 0 760 220" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M 50 200 A 330 330 0 0 1 710 200" stroke="currentColor" stroke-opacity="0.18" stroke-width="1.5" stroke-dasharray="4 6"/>
-          <path d="M 130 200 A 250 250 0 0 1 630 200" stroke="currentColor" stroke-opacity="0.25" stroke-width="1"/>
-          <!-- Central Optical Target Reticle -->
-          <circle cx="380" cy="50" r="14" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.5"/>
-          <circle cx="380" cy="50" r="3" fill="#E00613"/>
-          <line x1="380" y1="28" x2="380" y2="40" stroke="currentColor" stroke-opacity="0.4" stroke-width="1.5"/>
-          <line x1="380" y1="60" x2="380" y2="72" stroke="currentColor" stroke-opacity="0.4" stroke-width="1.5"/>
-          <line x1="358" y1="50" x2="370" y2="50" stroke="currentColor" stroke-opacity="0.4" stroke-width="1.5"/>
-          <line x1="390" y1="50" x2="402" y2="50" stroke="currentColor" stroke-opacity="0.4" stroke-width="1.5"/>
-        </svg>
-
-        <!-- 3 Technical Metric Columns -->
-        <div class="gauge-stats-row drone-stats-row">
-          <div class="gauge-stat-item drone-stat-item">
-            <div class="stat-figure tabular-nums">60 MP</div>
-            <div class="stat-label">[ MAXIMUM RESOLUTION ]</div>
-          </div>
-          <div class="gauge-stat-item drone-stat-item">
-            <div class="stat-figure tabular-nums">±0.02 mm</div>
-            <div class="stat-label">[ FLANGE TOLERANCE ]</div>
-          </div>
-          <div class="gauge-stat-item drone-stat-item">
-            <div class="stat-figure tabular-nums">ISO 64</div>
-            <div class="stat-label">[ BASE SENSITIVITY ]</div>
-          </div>
+      <!-- Interactive 3D Hotspot Annotations (Projected via Screen Math) -->
+      <div class="hotspot" id="hotspot-viewfinder" style="display: none;">
+        <div class="hotspot-ring"></div>
+        <div class="hotspot-core"></div>
+        <div class="hotspot-card">
+          <div class="hotspot-card-title">Rangefinder Optics</div>
+          <div class="hotspot-card-body">Large, bright optical viewfinder with automatic parallax compensation and sapphire anti-glare coatings.</div>
+        </div>
+      </div>
+      <div class="hotspot" id="hotspot-shutter" style="display: none;">
+        <div class="hotspot-ring"></div>
+        <div class="hotspot-core"></div>
+        <div class="hotspot-card">
+          <div class="hotspot-card-title">Dual Mechanical Shutter</div>
+          <div class="hotspot-card-body">Electronically controlled mechanical focal-plane shutter, capable of up to 1/4000s and silent electronic up to 1/16000s.</div>
+        </div>
+      </div>
+      <div class="hotspot" id="hotspot-badge" style="display: none;">
+        <div class="hotspot-ring"></div>
+        <div class="hotspot-core"></div>
+        <div class="hotspot-card">
+          <div class="hotspot-card-title">The Leica Red Dot</div>
+          <div class="hotspot-card-body">Cadmium red enamel badge bearing the cursive script signature of Ernst Leitz Wetzlar since 1914.</div>
         </div>
       </div>
     </section>
 
-    <!-- Phase 4: Outro Showcase (Vertical Stack Layout - Shortened Scroll) -->
+    <!-- Phase 6: Outro Showcase (CAD Wireframe Backdrop Rotating 360° Behind Bold Typography) -->
     <section class="content-section outro-section" id="section-outro">
-      <div class="outro-spacer" aria-hidden="true"></div>
-      <div class="outro-content">
+      <div class="outro-center-content">
         <div class="outro-logo-badge">
           <!-- Leica cursive logo SVG icon -->
           <svg viewBox="0 0 32 32">
@@ -251,7 +265,7 @@
   <script src="./vendor/ScrollTrigger.min.js"></script>
 
   <!-- Application Entry Point -->
-  <script type="module" src="./main.js?v=15"></script>
+  <script type="module" src="./main.js?v=16"></script>
 
 <!-- VERSION SWITCHER DOCK -->
 <style>
@@ -271,7 +285,7 @@
   padding: 0.3rem 0.6rem;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
   font-family: monospace;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   pointer-events: auto;
   max-width: calc(100vw - 2.5rem);
 }
@@ -280,7 +294,7 @@
   font-weight: 700;
   margin-right: 0.2rem;
   letter-spacing: 0.08em;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   flex-shrink: 0;
 }
 .version-links-scroll {
@@ -300,7 +314,7 @@
   border-radius: 999px;
   transition: all 0.2s ease;
   white-space: nowrap;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
 }
 .version-link:hover {
   color: #181B1E;
@@ -323,7 +337,7 @@
 <nav class="version-dock" aria-label="Version Switcher">
   <span class="version-dock-label">VER:</span>
   <div class="version-links-scroll">
-    <a href="/camera-lens-3d/v1/" class="version-link" title="v1: Prototype (Swiss Minimalist)">v1</a> <a href="/camera-lens-3d/v2/" class="version-link" title="v2: Anti-AI-Slop & Optical Rings">v2</a> <a href="/camera-lens-3d/v3/" class="version-link" title="v3: Preloader % & Curtain Wipe">v3</a> <a href="/camera-lens-3d/v4/" class="version-link" title="v4: Technical Blueprint Angle">v4</a> <a href="/camera-lens-3d/v5/" class="version-link" title="v5: Coaxial Pure-Z Explosion">v5</a> <a href="/camera-lens-3d/v6/" class="version-link" title="v6: 4 Macro Modules & PBR">v6</a> <a href="/camera-lens-3d/v7/" class="version-link" title="v7: Native Scroll Architecture">v7</a> <a href="/camera-lens-3d/v8/" class="version-link" title="v8: Hero Dwell & 3D Flight">v8</a> <a href="/camera-lens-3d/v9/" class="version-link" title="v9: Full White Gallery (Kinetic 66)">v9</a> <a href="/camera-lens-3d/v10/" class="version-link" title="v10: Snap Reassembly First">v10</a> <a href="/camera-lens-3d/v11/" class="version-link" title="v11: Math Geometric Centering">v11</a> <a href="/camera-lens-3d/v12/" class="version-link" title="v12: Mechanical Ambient Audio">v12</a> <a href="/camera-lens-3d/" class="version-link active" title="v13: Drone Riotters (Mới nhất)">v13 (Mới nhất)</a>
+    <a href="/camera-lens-3d/v1/" class="version-link" title="v1: Prototype (Swiss Minimalist)">v1</a> <a href="/camera-lens-3d/v2/" class="version-link" title="v2: Anti-AI-Slop & Optical Rings">v2</a> <a href="/camera-lens-3d/v3/" class="version-link" title="v3: Preloader % & Curtain Wipe">v3</a> <a href="/camera-lens-3d/v4/" class="version-link" title="v4: Technical Blueprint Angle">v4</a> <a href="/camera-lens-3d/v5/" class="version-link" title="v5: Coaxial Pure-Z Explosion">v5</a> <a href="/camera-lens-3d/v6/" class="version-link" title="v6: 4 Macro Modules & PBR">v6</a> <a href="/camera-lens-3d/v7/" class="version-link" title="v7: Native Scroll Architecture">v7</a> <a href="/camera-lens-3d/v8/" class="version-link" title="v8: Hero Dwell & 3D Flight">v8</a> <a href="/camera-lens-3d/v9/" class="version-link" title="v9: Full White Gallery (Kinetic 66)">v9</a> <a href="/camera-lens-3d/v10/" class="version-link" title="v10: Snap Reassembly First">v10</a> <a href="/camera-lens-3d/v11/" class="version-link" title="v11: Math Geometric Centering">v11</a> <a href="/camera-lens-3d/v12/" class="version-link" title="v12: Mechanical Ambient Audio">v12</a> <a href="/camera-lens-3d/v13/" class="version-link" title="v13: Drone Riotters">v13</a> <a href="/camera-lens-3d/" class="version-link active" title="v14: Fusion v2+v7+v9 (Mới nhất)">v14 (Mới nhất)</a>
   </div>
 </nav>
 
