@@ -12,9 +12,8 @@
   --hairline: rgba(24, 27, 30, 0.12);
   --hairline-strong: rgba(24, 27, 30, 0.24);
   --leica-red: #E00613;
-  --leica-red-glow: rgba(224, 6, 19, 0.28);
   --chrome-silver: #E8EAEF;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, 'Courier New', monospace;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --transition-theme: background-color 0.8s var(--ease-out-expo), color 0.8s var(--ease-out-expo);
@@ -112,7 +111,7 @@ body {
   height: 14px;
   border-radius: 50%;
   background-color: var(--leica-red);
-  box-shadow: 0 0 12px var(--leica-red-glow);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 .preloader-title {
   font-family: var(--font-sans);
@@ -143,9 +142,12 @@ body {
   left: 0;
   top: 0;
   height: 100%;
-  width: 0%;
+  width: 100%;
   background: var(--ink-primary);
-  transition: width 0.1s linear;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.1s linear;
+  will-change: transform;
 }
 
 .preloader-sub {
@@ -241,18 +243,17 @@ body.theme-dark .canvas-backdrop {
   max-width: 580px;
 }
 
-.brand-badge {
+.hero-meta-stamp {
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
   font-family: var(--font-mono);
-  font-size: 0.75rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
   color: var(--ink-secondary);
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
-.brand-dot {
+.meta-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -285,9 +286,8 @@ body.theme-dark .canvas-backdrop {
   align-items: center;
   gap: 0.8rem;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
   color: var(--ink-tertiary);
   animation: pulseScroll 2.4s ease-in-out infinite;
 }
@@ -377,8 +377,7 @@ body.theme-dark .canvas-backdrop {
 .chapter-subhead {
   font-family: var(--font-mono);
   font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.04em;
   color: var(--ink-secondary);
   border-left: 2px solid var(--leica-red);
   padding-left: 0.75rem;
@@ -504,7 +503,8 @@ body.theme-dark .spec-chip {
   inset: 8px;
   border-radius: 50%;
   background: var(--leica-red);
-  box-shadow: 0 0 10px var(--leica-red-glow);
+  border: 2px solid #FFF;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
   transition: transform 0.2s ease;
 }
 .hotspot:hover .hotspot-core {
@@ -580,7 +580,7 @@ body.theme-dark .hotspot-card {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 10px 30px var(--leica-red-glow);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 .outro-logo-badge svg {
   width: 32px;
@@ -648,6 +648,14 @@ body.theme-dark .hotspot-card {
   border-color: var(--leica-red);
   color: #FFF;
 }
+.action-btn:active {
+  transform: translateY(1px) scale(0.97);
+  transition: transform 90ms ease-out;
+}
+.action-btn:focus-visible {
+  outline: 2px solid var(--leica-red);
+  outline-offset: 3px;
+}
 
 /* ==========================================================================
    RESPONSIVE DESIGN (Tablets & Mobile)
@@ -674,5 +682,22 @@ body.theme-dark .hotspot-card {
   .assembled-sticky-text {
     position: relative;
     top: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .hero-section {
+    padding: calc(2rem + env(safe-area-inset-top, 0px)) 1.25rem calc(2rem + env(safe-area-inset-bottom, 0px));
+  }
+  .hero-title {
+    font-size: clamp(2.4rem, 11vw, 3.4rem);
+  }
+  .outro-section {
+    padding: 3rem 1.25rem calc(3rem + env(safe-area-inset-bottom, 0px));
+  }
+  .action-btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
   }
 }

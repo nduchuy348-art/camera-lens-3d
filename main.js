@@ -222,7 +222,7 @@ loader.load(
 
     // Complete Preloader Counter & Curtain Reveal
     preloaderCounter.textContent = '100';
-    preloaderBar.style.width = '100%';
+    preloaderBar.style.transform = 'scaleX(1)';
 
     setTimeout(() => {
       preloader.classList.add('loaded');
@@ -234,7 +234,7 @@ loader.load(
     if (xhr.total > 0) {
       const pct = Math.floor((xhr.loaded / xhr.total) * 100);
       preloaderCounter.textContent = pct < 10 ? `0${pct}` : `${pct}`;
-      preloaderBar.style.width = `${pct}%`;
+      preloaderBar.style.transform = `scaleX(${pct / 100})`;
     }
   },
   (err) => {
@@ -318,8 +318,6 @@ function initScrollTriggers() {
     modelRotX: 0.02,
     ease: 'power2.inOut',
     duration: 2.8,
-    onStart: () => document.body.classList.add('theme-dark'),
-    onReverseComplete: () => document.body.classList.remove('theme-dark'),
   })
 
   // --- Phase 2, Chapter 3: Tactile Controls Dials (Model High-Right, LIGHT MODE) ---
@@ -335,7 +333,6 @@ function initScrollTriggers() {
     modelRotX: 0.35,
     ease: 'power2.inOut',
     duration: 2.5,
-    onStart: () => document.body.classList.remove('theme-dark'),
   })
 
   // --- Phase 2, Chapter 4: Rangefinder Heritage & Arc Gauge (Center) ---
@@ -366,16 +363,6 @@ function initScrollTriggers() {
     modelRotX: -0.04,
     ease: 'back.out(1.2)', // Tangible mechanical snap
     duration: 2.4,
-    onStart: () => {
-      audio.playSnap();
-      audio.playShutter();
-      state.hotspotsVisible = true;
-      toggleHotspots(true);
-    },
-    onReverseComplete: () => {
-      state.hotspotsVisible = false;
-      toggleHotspots(false);
-    },
   })
 
   // --- Phase 4: Outro Showcase (Edolus Center Lock) ---
@@ -391,7 +378,40 @@ function initScrollTriggers() {
     modelRotX: 0.0,
     ease: 'power2.out',
     duration: 1.8,
-    onStart: () => {
+  });
+
+  // Dedicated Chapter 2 Sensor Obsidian Dark Theme Controller
+  ScrollTrigger.create({
+    trigger: '#chapter-sensor',
+    start: 'top 65%',
+    end: 'bottom 35%',
+    onEnter: () => document.body.classList.add('theme-dark'),
+    onLeave: () => document.body.classList.remove('theme-dark'),
+    onEnterBack: () => document.body.classList.add('theme-dark'),
+    onLeaveBack: () => document.body.classList.remove('theme-dark'),
+  });
+
+  // Dedicated Phase 3 Reassembly & Hotspots Controller
+  ScrollTrigger.create({
+    trigger: '#section-assembled',
+    start: 'top 55%',
+    end: 'bottom 45%',
+    onEnter: () => {
+      audio.playSnap();
+      audio.playShutter();
+      state.hotspotsVisible = true;
+      toggleHotspots(true);
+    },
+    onLeave: () => {
+      state.hotspotsVisible = false;
+      toggleHotspots(false);
+    },
+    onEnterBack: () => {
+      state.hotspotsVisible = true;
+      toggleHotspots(true);
+    },
+    onLeaveBack: () => {
+      state.hotspotsVisible = false;
       toggleHotspots(false);
     },
   });
