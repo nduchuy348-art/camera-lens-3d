@@ -335,17 +335,24 @@ loader.load(
       document.documentElement.classList.remove('is-loading');
       document.body.classList.remove('is-loading');
 
-      // 2. Play shutter sound and start curtain opening animation
+      // 2. Ensure initial window scroll is top (Hero assembled state)
+      if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+      }
+      window.scrollTo(0, 0);
+
+      // 3. Play shutter sound and start curtain opening animation
       preloader.classList.add('loaded');
       audio.playShutter();
 
-      // 3. Refresh ScrollTrigger now that container has full dimensions and model is loaded
+      // 4. Refresh ScrollTrigger now that container has full dimensions and model is loaded
       ScrollTrigger.refresh();
 
-      // 4. Completely hide preloader element after curtain transition completes
+      // 5. Completely hide preloader element after curtain transition completes
       setTimeout(() => {
         preloader.classList.add('hidden');
         preloader.style.display = 'none';
+        window.scrollTo(0, 0);
         ScrollTrigger.refresh();
       }, 1000);
     }, 250);
@@ -491,21 +498,43 @@ function initScrollTriggers() {
     },
   });
 
-  // --- Phase 1: Pure Z 4-Module Coaxial Explosion (Hero -> Explode Intro) ---
-  // Pure coaxial explosion along optical Z-axis only (X=0, Y=0).
-  // Duration: 2.3
+  // --- Phase 1, Step 1: Hero Overview Dwell (Model strictly 100% assembled and flush) ---
+  // During Hero, anim.explode remains strictly 0.0 with zero micro-offsets
   tl.to(anim, {
+    explode: 0.0,
+    subExplode1: 0.0,
+    subExplode2: 0.0,
+    subExplode3: 0.0,
+    camX: baseCameraPos.x,
+    camY: baseCameraPos.y,
+    camZ: baseCameraPos.z,
+    lookX: baseTargetPos.x,
+    lookY: baseTargetPos.y,
+    lookZ: baseTargetPos.z,
+    modelRotY: 0.20,
+    modelRotX: 0.02,
+    orbitalOpacity: 1.0,
+    duration: 1.2,
+    ease: 'none',
+  })
+
+  // --- Phase 1, Step 2: Pure Z 4-Module Coaxial Explosion & Dynamic 3D Sweep ---
+  // Smoothly drives explode from 0.0 to 1.0 while rotating dynamically into dramatic 3/4 perspective
+  .to(anim, {
     explode: 1.0,
-    camX: -0.45,
-    camY: 0.85,
-    camZ: 2.15,
+    subExplode1: 0.0,
+    subExplode2: 0.0,
+    subExplode3: 0.0,
+    camX: -0.55,
+    camY: 0.88,
+    camZ: 2.22,
     lookX: 0.0,
     lookY: 0.06,
     lookZ: 0.0,
-    modelRotY: 0.45, // Dramatic angle showcasing the 4 separated module slabs
-    modelRotX: 0.0,
+    modelRotY: 0.65, // Dramatic 37.2° angle clearly showing the 4 separated module slabs
+    modelRotX: 0.14, // Elevated pitch exposing gaps between top deck and chassis
     orbitalOpacity: 0.0,
-    duration: 2.3,
+    duration: 2.0,
     ease: 'power2.inOut',
   })
 
@@ -939,6 +968,13 @@ function render() {
       if (!orig) return;
 
       mesh.visible = true;
+
+      // When fully assembled (Hero or reassembly), lock strictly to original CAD transform
+      if (anim.explode === 0.0 && anim.subExplode1 === 0.0 && anim.subExplode2 === 0.0 && anim.subExplode3 === 0.0) {
+        mesh.position.copy(orig.position);
+        mesh.rotation.copy(orig.rotation);
+        return;
+      }
 
       // Pure coaxial explosion along optical Z-axis only (X=0, Y=0)
       const macroZ = modVec.z * anim.explode;
