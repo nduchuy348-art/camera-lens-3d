@@ -174,6 +174,83 @@ body {
 }
 
 /* ==========================================================================
+   TOP MINIMALIST UTILITY BAR
+   ========================================================================== */
+.top-nav-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 clamp(1.25rem, 3.5vw, 3rem);
+  z-index: 100;
+  pointer-events: none;
+}
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  pointer-events: auto;
+}
+.nav-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--leica-red);
+}
+.nav-title {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+}
+.nav-sub {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-tertiary);
+  letter-spacing: 0.14em;
+}
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  pointer-events: auto;
+}
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.85rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  background: rgba(253, 253, 253, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 999px;
+  color: var(--ink-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.nav-btn:hover {
+  background: #FFF;
+  border-color: var(--ink-primary);
+  transform: translateY(-1px);
+}
+.nav-btn.muted {
+  color: var(--ink-tertiary);
+  opacity: 0.75;
+}
+.nav-btn.muted #audio-wave-1,
+.nav-btn.muted #audio-wave-2 {
+  opacity: 0;
+}
+
+/* ==========================================================================
    WEBGL CANVAS (Fixed Background Viewport, Z-Index: 2)
    ========================================================================== */
 #webgl-container {
@@ -360,9 +437,9 @@ body {
 }
 .explode-backdrop-text {
   font-size: clamp(3rem, 7.5vw, 7.5rem);
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  color: rgba(24, 27, 30, 0.25); /* Clearly readable kinetic backdrop */
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: rgba(24, 27, 30, 0.40); /* Clearly readable and punchy kinetic backdrop */
   line-height: 1.0;
   white-space: nowrap;
   user-select: none;
@@ -370,9 +447,9 @@ body {
 .explode-backdrop-sub {
   font-family: var(--font-mono);
   font-size: clamp(0.75rem, 1.1vw, 1.0rem);
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.22em;
-  color: rgba(24, 27, 30, 0.55);
+  color: rgba(24, 27, 30, 0.65);
   margin-top: 1.25rem;
   text-transform: uppercase;
   user-select: none;
@@ -392,18 +469,19 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  max-width: min(440px, 36vw);
+  max-width: min(520px, 44vw);
+  width: max-content;
   position: relative;
   z-index: 10;
-  background: rgba(253, 253, 253, 0.76);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  padding: 1.75rem 2rem;
+  background: rgba(253, 253, 253, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  padding: 1.85rem 2.25rem;
   border-radius: 8px;
   border: 1px solid var(--hairline);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
   pointer-events: auto;
-  word-break: break-word;
+  word-break: normal;
   overflow: visible;
 }
 
@@ -433,15 +511,19 @@ body {
 }
 
 .chapter-heading {
-  font-size: clamp(2.4rem, 4.4vw, 4.2rem);
+  font-size: clamp(2.2rem, 3.8vw, 3.6rem);
   font-weight: 300;
   letter-spacing: -0.035em;
-  line-height: 1.0;
-  word-break: break-word;
+  line-height: 1.05;
+  word-break: normal;
 }
 .chapter-heading strong {
   font-weight: 700;
   display: block;
+}
+.nowrap-heading,
+.nowrap-heading strong {
+  white-space: nowrap;
 }
 
 .chapter-subhead {
@@ -477,44 +559,57 @@ body {
   backdrop-filter: blur(8px);
 }
 
-/* --- Chapter 4: Technical Arc Gauge Section (Metric Floor) --- */
-.gauge-section {
-  min-height: 180vh;
-  justify-content: flex-end;
-  padding-bottom: clamp(3rem, 8vh, 6rem);
+/* --- Chapter 4: Drone Riotters Style Metric Floor (Clean 2-tier layout) --- */
+.gauge-section,
+.drone-riotters-section {
+  min-height: 220vh;
   position: relative;
   z-index: 5;
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 0;
 }
-.gauge-hud-wrapper {
+.gauge-hud-wrapper,
+.drone-hud-wrapper {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
   width: 100%;
-  max-width: 1100px;
+  max-width: 1080px;
   margin: 0 auto;
-  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  z-index: 5;
+  justify-content: flex-end;
+  padding-bottom: clamp(2rem, 5vh, 4.5rem);
   pointer-events: auto;
+  z-index: 5;
 }
 
-.gauge-arc-svg {
+.gauge-arc-svg,
+.drone-arc-svg {
   width: 100%;
-  max-width: 720px;
+  max-width: 760px;
   height: auto;
-  margin-bottom: -1rem;
+  margin-bottom: -0.75rem;
+  pointer-events: none;
 }
 
-.gauge-stats-row {
+.gauge-stats-row,
+.drone-stats-row {
   width: 100%;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   border-top: 1px solid var(--hairline);
   border-bottom: 1px solid var(--hairline);
   padding: 1.75rem 0;
-  backdrop-filter: blur(8px);
-  background: rgba(253, 253, 253, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(253, 253, 253, 0.65);
 }
-.gauge-stat-item {
+.gauge-stat-item,
+.drone-stat-item {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -522,7 +617,8 @@ body {
   text-align: center;
   padding: 0 1.5rem;
 }
-.gauge-stat-item:not(:last-child) {
+.gauge-stat-item:not(:last-child),
+.drone-stat-item:not(:last-child) {
   border-right: 1px solid var(--hairline);
 }
 .stat-figure {
@@ -556,14 +652,14 @@ body {
   pointer-events: auto;
 }
 
-/* --- Phase 4: Outro Showcase (Vertical Stack Layout) --- */
+/* --- Phase 4: Outro Showcase (Vertical Stack Layout - Shortened Travel) --- */
 .outro-section {
-  min-height: 180vh; /* Lengthened slow turntable outro */
+  min-height: 110vh; /* Shortened turntable outro with smooth revolution */
   display: flex;
   flex-direction: column;
   justify-content: flex-end; /* Top 55% reserved for 3D model, bottom 45% for typography */
   align-items: center;
-  padding: 0 clamp(1.5rem, 4vw, 4rem) clamp(3rem, 6vh, 6rem);
+  padding: 0 clamp(1.5rem, 4vw, 4rem) clamp(2.5rem, 5vh, 5rem);
   text-align: center;
   position: relative;
   z-index: 5;
