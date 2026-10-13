@@ -1,0 +1,678 @@
+/* ==========================================================================
+   LEICA M11 — EDITORIAL 3D EXPERIENCE STYLESHEET
+   Crafted with Swiss Minimalist & Awwwards Creative Direction
+   ========================================================================== */
+
+:root {
+  --bg-canvas: #FDFDFD;
+  --bg-canvas-subtle: #F6F7F8;
+  --ink-primary: #181B1E;
+  --ink-secondary: rgba(24, 27, 30, 0.65);
+  --ink-tertiary: rgba(24, 27, 30, 0.35);
+  --hairline: rgba(24, 27, 30, 0.12);
+  --hairline-strong: rgba(24, 27, 30, 0.24);
+  --leica-red: #E00613;
+  --leica-red-glow: rgba(224, 6, 19, 0.28);
+  --chrome-silver: #E8EAEF;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, 'Courier New', monospace;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-theme: background-color 0.8s var(--ease-out-expo), color 0.8s var(--ease-out-expo);
+}
+
+body.theme-dark {
+  --bg-canvas: #0C0D0F;
+  --bg-canvas-subtle: #141619;
+  --ink-primary: #F3F4F6;
+  --ink-secondary: rgba(243, 244, 246, 0.68);
+  --ink-tertiary: rgba(243, 244, 246, 0.38);
+  --hairline: rgba(243, 244, 246, 0.12);
+  --hairline-strong: rgba(243, 244, 246, 0.26);
+}
+
+/* Base Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  font-size: 16px;
+  background-color: var(--bg-canvas);
+  color: var(--ink-primary);
+  overflow-x: hidden;
+  transition: var(--transition-theme);
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-canvas);
+  color: var(--ink-primary);
+  line-height: 1.5;
+  transition: var(--transition-theme);
+  overflow-x: hidden;
+}
+
+/* ==========================================================================
+   PRELOADER (Technical Monospace Counter with Curtain Reveal)
+   ========================================================================== */
+#preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.curtain-panel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  background: #FDFDFD;
+  transition: transform 1.2s cubic-bezier(0.85, 0, 0.15, 1);
+}
+.curtain-left { left: 0; transform-origin: left; }
+.curtain-right { right: 0; transform-origin: right; }
+
+#preloader.loaded .curtain-left {
+  transform: translateX(-100%);
+}
+#preloader.loaded .curtain-right {
+  transform: translateX(100%);
+}
+#preloader.loaded .preloader-content {
+  opacity: 0;
+  transform: scale(0.95);
+  pointer-events: none;
+}
+
+.preloader-content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  transition: opacity 0.5s ease, transform 0.6s ease;
+}
+
+.preloader-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.preloader-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: var(--leica-red);
+  box-shadow: 0 0 12px var(--leica-red-glow);
+}
+.preloader-title {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.preloader-counter {
+  font-family: var(--font-mono);
+  font-size: clamp(3.5rem, 8vw, 6.5rem);
+  font-weight: 300;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.preloader-bar-wrap {
+  width: 220px;
+  height: 2px;
+  background: rgba(24, 27, 30, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+.preloader-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0%;
+  background: var(--ink-primary);
+  transition: width 0.1s linear;
+}
+
+.preloader-sub {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-secondary);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
+   WEBGL CANVAS (Fixed Background Viewport)
+   ========================================================================== */
+#webgl-container {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
+  pointer-events: none;
+}
+#webgl-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Background Atmospheric Radial Glow */
+.canvas-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.8) 0%, rgba(253, 253, 253, 0.2) 70%, transparent 100%);
+  transition: opacity 0.8s ease;
+}
+body.theme-dark .canvas-backdrop {
+  background: radial-gradient(circle at 50% 50%, rgba(24, 28, 36, 0.5) 0%, rgba(12, 13, 15, 0.8) 70%, transparent 100%);
+}
+
+/* Hairline Grid Overlay (Editorial Swiss Lines) */
+.editorial-grid {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  padding: 0 clamp(1rem, 3.5vw, 4rem);
+}
+.grid-col {
+  border-right: 1px solid var(--hairline);
+  height: 100%;
+}
+.grid-col:first-child {
+  border-left: 1px solid var(--hairline);
+}
+
+/* ==========================================================================
+   SCROLL SECTIONS & EDITORIAL TYPOGRAPHY
+   ========================================================================== */
+.scroll-container {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+}
+
+.content-section {
+  position: relative;
+  min-height: 100vh;
+  padding: clamp(2rem, 5vh, 6rem) clamp(1.5rem, 4vw, 5rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* Allow interactive buttons/hotspots inside sections */
+.content-section a,
+.content-section button,
+.content-section .interactive {
+  pointer-events: auto;
+}
+
+/* --- Hero Section --- */
+.hero-section {
+  min-height: 130vh;
+  justify-content: flex-end;
+  padding-bottom: clamp(3rem, 8vh, 8rem);
+}
+
+.hero-bottom-left {
+  max-width: 580px;
+}
+
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+  margin-bottom: 1rem;
+}
+.brand-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--leica-red);
+}
+
+.hero-title {
+  font-size: clamp(3rem, 7vw, 6.5rem);
+  font-weight: 300;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+  margin-bottom: 1.25rem;
+}
+.hero-title strong {
+  font-weight: 700;
+  display: block;
+}
+
+.hero-tagline {
+  font-size: clamp(1.05rem, 1.4vw, 1.35rem);
+  color: var(--ink-secondary);
+  font-weight: 300;
+  line-height: 1.5;
+  max-width: 44ch;
+  margin-bottom: 2rem;
+}
+
+.scroll-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink-tertiary);
+  animation: pulseScroll 2.4s ease-in-out infinite;
+}
+@keyframes pulseScroll {
+  0%, 100% { opacity: 0.4; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(4px); }
+}
+
+/* --- Explode Intro Section --- */
+.explode-intro-section {
+  min-height: 120vh;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+.explode-statement {
+  max-width: 780px;
+}
+.statement-index {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.2em;
+  color: var(--leica-red);
+  margin-bottom: 1.25rem;
+  display: block;
+}
+.statement-text {
+  font-size: clamp(2rem, 4.5vw, 4.2rem);
+  font-weight: 300;
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+  color: var(--ink-primary);
+}
+.statement-text span {
+  color: var(--ink-secondary);
+}
+
+/* --- Phase 2 Chapters (Alternating Sides) --- */
+.chapter-section {
+  min-height: 160vh;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  align-items: center;
+  position: relative;
+}
+
+.editorial-block {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 520px;
+}
+.block-left {
+  grid-column: 1 / span 6;
+}
+.block-right {
+  grid-column: 7 / span 6;
+  justify-self: end;
+}
+
+.chapter-number {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  color: var(--ink-tertiary);
+  text-transform: uppercase;
+}
+.chapter-number span {
+  color: var(--leica-red);
+  font-weight: 600;
+}
+
+.chapter-heading {
+  font-size: clamp(2.8rem, 5.5vw, 5.5rem);
+  font-weight: 300;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+}
+.chapter-heading strong {
+  font-weight: 700;
+  display: block;
+}
+
+.chapter-subhead {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-secondary);
+  border-left: 2px solid var(--leica-red);
+  padding-left: 0.75rem;
+}
+
+.chapter-desc {
+  font-size: clamp(1rem, 1.2vw, 1.18rem);
+  color: var(--ink-secondary);
+  line-height: 1.6;
+  font-weight: 300;
+}
+
+.spec-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+.spec-chip {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--hairline-strong);
+  background: rgba(255, 255, 255, 0.4);
+  color: var(--ink-secondary);
+  backdrop-filter: blur(8px);
+}
+body.theme-dark .spec-chip {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* --- Chapter 4: Technical Arc Gauge Section --- */
+.gauge-section {
+  min-height: 180vh;
+  justify-content: flex-end;
+  padding-bottom: clamp(3rem, 8vh, 6rem);
+}
+.gauge-hud-wrapper {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.gauge-arc-svg {
+  width: 100%;
+  max-width: 720px;
+  height: auto;
+  margin-bottom: -1rem;
+}
+
+.gauge-stats-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  padding: 1.75rem 0;
+  backdrop-filter: blur(8px);
+}
+.gauge-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 1.5rem;
+}
+.gauge-stat-item:not(:last-child) {
+  border-right: 1px solid var(--hairline);
+}
+.stat-figure {
+  font-size: clamp(2rem, 3.8vw, 3.5rem);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+}
+
+/* --- Phase 3: Assembled & Hotspots Showcase --- */
+.assembled-section {
+  min-height: 200vh;
+  position: relative;
+}
+
+.assembled-sticky-text {
+  position: sticky;
+  top: 15vh;
+  max-width: 480px;
+}
+
+/* 3D Hotspot Overlays */
+.hotspot {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  z-index: 20;
+  pointer-events: auto;
+}
+.hotspot-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid var(--leica-red);
+  animation: hotspotPing 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+.hotspot-core {
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  background: var(--leica-red);
+  box-shadow: 0 0 10px var(--leica-red-glow);
+  transition: transform 0.2s ease;
+}
+.hotspot:hover .hotspot-core {
+  transform: scale(1.3);
+}
+@keyframes hotspotPing {
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.hotspot-card {
+  position: absolute;
+  left: 36px;
+  top: 50%;
+  transform: translateY(-50%) translateX(10px);
+  width: 240px;
+  padding: 1rem 1.25rem;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+body.theme-dark .hotspot-card {
+  background: rgba(18, 20, 24, 0.88);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+.hotspot:hover .hotspot-card {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+.hotspot-card-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--leica-red);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+.hotspot-card-body {
+  font-size: 0.85rem;
+  color: var(--ink-secondary);
+  line-height: 1.4;
+}
+
+/* --- Phase 4: Outro Showcase (Edolus Style) --- */
+.outro-section {
+  min-height: 120vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.outro-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  max-width: 680px;
+}
+
+.outro-logo-badge {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--leica-red);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 30px var(--leica-red-glow);
+}
+.outro-logo-badge svg {
+  width: 32px;
+  height: auto;
+  fill: #FFF;
+}
+
+.outro-title {
+  font-size: clamp(3.2rem, 7vw, 6.8rem);
+  font-weight: 300;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+}
+.outro-title strong {
+  font-weight: 700;
+}
+
+.outro-slogan {
+  font-family: var(--font-sans);
+  font-size: clamp(1.1rem, 1.6vw, 1.5rem);
+  font-weight: 300;
+  color: var(--ink-secondary);
+  letter-spacing: 0.04em;
+  font-style: italic;
+}
+
+.outro-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.action-btn {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.9rem 1.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--hairline-strong);
+  background: var(--bg-canvas-subtle);
+  color: var(--ink-primary);
+  cursor: pointer;
+  transition: all 0.25s var(--ease-out-expo);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.action-btn:hover {
+  background: var(--ink-primary);
+  color: var(--bg-canvas);
+  border-color: var(--ink-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+}
+.action-btn-primary {
+  background: var(--ink-primary);
+  color: var(--bg-canvas);
+  border-color: var(--ink-primary);
+}
+.action-btn-primary:hover {
+  background: var(--leica-red);
+  border-color: var(--leica-red);
+  color: #FFF;
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN (Tablets & Mobile)
+   ========================================================================== */
+@media (max-width: 900px) {
+  .editorial-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+  .block-left,
+  .block-right {
+    grid-column: 1 / span 12;
+    justify-self: start;
+    max-width: 100%;
+  }
+  .gauge-stats-row {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .gauge-stat-item:not(:last-child) {
+    border-right: none;
+    border-bottom: 1px solid var(--hairline);
+    padding-bottom: 1.5rem;
+  }
+  .assembled-sticky-text {
+    position: relative;
+    top: 0;
+  }
+}

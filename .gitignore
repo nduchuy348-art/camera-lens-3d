@@ -1,0 +1,9 @@
+# 3D models and raw archives
+*.zip
+*.blend
+*.blend1
+
+# Temporary & cache
+.DS_Store
+node_modules/
+*.log
