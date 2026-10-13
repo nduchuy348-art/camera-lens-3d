@@ -188,7 +188,8 @@ const originalTransforms = new Map();
 const originalMaterials = new Map();
 const moduleExplodeVectors = new Map();
 const microExplodeVectors = new Map();
-const meshCenters = new Map();
+const meshGeoCenters = new Map();
+let overallModelCenter = new THREE.Vector3();
 
 let modelRoot = null;
 const bodyPlates = [];
@@ -383,15 +384,17 @@ loader.load(
 
     // Center model at origin (0, 0, 0)
     const box = new THREE.Box3().setFromObject(modelRoot);
-    const center = box.getCenter(new THREE.Vector3());
-    modelRoot.position.sub(center);
+    overallModelCenter = box.getCenter(new THREE.Vector3());
+    modelRoot.position.copy(overallModelCenter).negate();
     modelRoot.updateMatrixWorld(true);
 
-    // Record individual mesh centers in modelRoot coordinate space for exact centering when isolated
+    // Record individual mesh geometric centers for exact centering when isolated
     modelRoot.traverse((child) => {
       if (child.isMesh) {
-        const childBox = new THREE.Box3().setFromObject(child);
-        meshCenters.set(child, childBox.getCenter(new THREE.Vector3()));
+        child.geometry.computeBoundingBox();
+        const geoBox = child.geometry.boundingBox;
+        const geoCenter = geoBox.getCenter(new THREE.Vector3());
+        meshGeoCenters.set(child, geoCenter);
       }
     });
 
@@ -494,18 +497,19 @@ const anim = {
 function initScrollTriggers() {
   // Section Pinning & Sub-Assembly Isolation Controllers
   const chapterPins = [
-    { id: '#chapter-bayonet', key: 'BAYONET', prevKey: null, dwell: '+=160%' },
-    { id: '#chapter-sensor', key: 'SENSOR', prevKey: 'BAYONET', dwell: '+=160%' },
-    { id: '#chapter-dials', key: 'DIALS', prevKey: 'SENSOR', dwell: '+=140%' },
+    { id: '#chapter-bayonet', key: 'BAYONET', prevKey: null, dwell: '+=150%' },
+    { id: '#chapter-sensor', key: 'SENSOR', prevKey: 'BAYONET', dwell: '+=150%' },
+    { id: '#chapter-dials', key: 'DIALS', prevKey: 'SENSOR', dwell: '+=150%' },
   ];
 
   chapterPins.forEach((ch) => {
-    // Early Phase Switch Trigger (top 85%) for clean fade & snap-in transition
+    // Early Phase Switch Trigger (top 80%) for clean fade & snap-in transition
     ScrollTrigger.create({
       trigger: ch.id,
-      start: 'top 85%',
-      end: 'bottom 15%',
+      start: 'top 80%',
+      end: 'bottom 20%',
       onEnter: () => setSubAssemblyFocus(ch.key),
+      onEnterBack: () => setSubAssemblyFocus(ch.key),
       onLeaveBack: () => setSubAssemblyFocus(ch.prevKey),
     });
 
@@ -524,15 +528,15 @@ function initScrollTriggers() {
   ScrollTrigger.create({
     trigger: '#explode-intro',
     start: 'top 85%',
-    end: 'bottom 50%',
+    end: 'bottom 20%',
     onEnterBack: () => setSubAssemblyFocus(null),
   });
 
   // Phase 3 Reassembly Snap Controller (Model returns to general view)
   ScrollTrigger.create({
     trigger: '#section-assembled',
-    start: 'top 70%',
-    end: 'bottom 30%',
+    start: 'top 80%',
+    end: 'bottom 20%',
     onEnter: () => setSubAssemblyFocus(null),
     onEnterBack: () => setSubAssemblyFocus(null),
   });
@@ -543,6 +547,7 @@ function initScrollTriggers() {
     start: 'top 80%',
     end: 'bottom 20%',
     onEnter: () => setSubAssemblyFocus(null),
+    onEnterBack: () => setSubAssemblyFocus(null),
     onLeaveBack: () => setSubAssemblyFocus(null),
   });
 
@@ -555,7 +560,7 @@ function initScrollTriggers() {
     onEnterBack: () => setSubAssemblyFocus(null),
   });
 
-  // Master Scroll Timeline spanning the entire experience
+  // Master Scroll Timeline spanning the entire experience (50s calibrated duration)
   const tl = gsap.timeline({
     scrollTrigger: {
       trigger: '.scroll-container',
@@ -571,22 +576,22 @@ function initScrollTriggers() {
           state.lastDetent = currentDetent;
         }
 
-        // Single decisive impact snap at progress >= 0.65 (Reassembly transition)
-        if (progress >= 0.65) {
+        // Single decisive impact snap at progress >= 0.77 (Reassembly transition)
+        if (progress >= 0.77) {
           if (!state.snappedClimax) {
             triggerImpactShake();
             audio.playSnap();
             audio.playShutter();
             state.snappedClimax = true;
           }
-        } else if (progress < 0.60) {
+        } else if (progress < 0.72) {
           state.snappedClimax = false;
         }
       },
     },
   });
 
-  // --- Phase 1, Step 1: Hero Overview Dwell (Model strictly 100% assembled and flush) ---
+  // --- Phase 1, Step 1: Hero Overview Dwell (0.000 -> 0.080, duration: 4.0s) ---
   tl.to(anim, {
     explode: 0.0,
     subExplode1: 0.0,
@@ -601,11 +606,11 @@ function initScrollTriggers() {
     modelRotY: 0.20,
     modelRotX: 0.02,
     orbitalOpacity: 1.0,
-    duration: 1.5,
+    duration: 4.0,
     ease: 'none',
   })
 
-  // --- Phase 1, Step 2: Extended Slow Z-Explosion (300vh Section) ---
+  // --- Phase 1, Step 2: Extended Slow Z-Explosion (0.080 -> 0.265, duration: 9.25s) ---
   // Gracefully separates the 4 modules along the optical Z-axis with dramatic perspective
   .to(anim, {
     explode: 1.0,
@@ -621,17 +626,17 @@ function initScrollTriggers() {
     modelRotY: 0.65, // Dramatic 37.2° angle clearly showing separated module slabs
     modelRotX: 0.14, // Elevated pitch exposing gaps between top deck and chassis
     orbitalOpacity: 0.0,
-    duration: 3.5, // Extended for slow majestic travel across 300vh
+    duration: 6.5,
     ease: 'power2.inOut',
   })
   // Suspended in space dwell:
   .to(anim, {
     modelRotY: 0.72,
-    duration: 1.2,
+    duration: 2.75,
     ease: 'none',
   })
 
-  // --- Phase 2, Chapter 1: Bayonet Mount (Safe Centered Macro Framing camZ: 0.75m) ---
+  // --- Phase 2, Chapter 1: Bayonet Mount (0.265 -> 0.420, duration: 7.75s) ---
   // Only Bayonet.005 flange is centered at (0, 0, 0), no lens cap, no right lever
   .to(anim, {
     camX: 0.0,
@@ -642,18 +647,18 @@ function initScrollTriggers() {
     lookZ: 0.0,
     modelRotY: -0.22,
     modelRotX: 0.08,
-    duration: 0.8,
+    duration: 2.5,
     ease: 'power2.inOut',
   })
   // Turntable inspection sweep catching stainless steel reflections:
   .to(anim, {
     modelRotY: 0.25,
     modelRotX: 0.12,
-    duration: 1.4,
+    duration: 5.25,
     ease: 'none',
   })
 
-  // --- Phase 2, Chapter 2: 60MP Sensor Core & Magnesium Chassis (camZ: 0.70m) ---
+  // --- Phase 2, Chapter 2: 60MP Sensor Core & Magnesium Chassis (0.420 -> 0.574, duration: 7.70s) ---
   .to(anim, {
     camX: 0.0,
     camY: 0.0,
@@ -663,18 +668,18 @@ function initScrollTriggers() {
     lookZ: 0.0,
     modelRotY: -0.25,
     modelRotX: -0.04,
-    duration: 0.8,
+    duration: 2.5,
     ease: 'power2.inOut',
   })
   // Turntable inspection sweep catching sapphire glass and contacts:
   .to(anim, {
     modelRotY: 0.28,
     modelRotX: 0.12,
-    duration: 1.4,
+    duration: 5.20,
     ease: 'none',
   })
 
-  // --- Phase 2, Chapter 3: Tactile Command (ONLY Shutter Speed Dial Centered at Origin) ---
+  // --- Phase 2, Chapter 3: Tactile Command (0.574 -> 0.728, duration: 7.70s) ---
   // Single hero dial centered at (0, 0, 0), elevated top-down view over knurling & numbers:
   .to(anim, {
     camX: 0.0,
@@ -685,18 +690,18 @@ function initScrollTriggers() {
     lookZ: 0.0,
     modelRotY: -0.22,
     modelRotX: 0.52,
-    duration: 0.8,
+    duration: 2.5,
     ease: 'power2.inOut',
   })
   // Turntable inspection sweep catching diamond knurling reflections:
   .to(anim, {
     modelRotY: 0.26,
     modelRotX: 0.50,
-    duration: 1.4,
+    duration: 5.20,
     ease: 'none',
   })
 
-  // --- Phase 3: Seamless Reassembly Snap (BEFORE Chapter 4 Technical Specs) ---
+  // --- Phase 3: Seamless Reassembly Snap (0.728 -> 0.840, duration: 5.60s) ---
   // Components pull back into exploded hover before snap:
   .to(anim, {
     explode: 0.65,
@@ -708,7 +713,7 @@ function initScrollTriggers() {
     lookZ: 0.0,
     modelRotY: 0.28,
     modelRotX: 0.06,
-    duration: 0.8,
+    duration: 2.8,
     ease: 'power2.inOut',
   })
   // SINGLE DECISIVE IMPACT: All 66 components snap completely flush into solid camera!
@@ -716,15 +721,16 @@ function initScrollTriggers() {
     explode: 0.0,
     camZ: 1.48,
     modelRotX: 0.0,
-    duration: 0.4,
+    duration: 1.2,
     ease: 'back.out(2.0)',
   })
+  // Solid camera assembled dwell:
   .to(anim, {
-    duration: 0.4,
+    duration: 1.6,
     ease: 'none',
   })
 
-  // --- Phase 3: Chapter 4 — Technical Specs (60MP, ±0.02mm, ISO 64) ---
+  // --- Phase 3: Chapter 4 — Technical Specs (0.840 -> 0.951, duration: 5.55s) ---
   // Model is ALREADY 100% assembled. Dwells in center safe zone above stats cards, rotates gently ±12°:
   .to(anim, {
     camX: 0.0,
@@ -735,29 +741,29 @@ function initScrollTriggers() {
     lookZ: 0.0,
     modelRotY: 0.0,
     modelRotX: 0.02,
-    duration: 0.6,
+    duration: 1.5,
     ease: 'power2.inOut',
   })
   // Gentle showcase turn to the left (-12° = -0.21 rad):
   .to(anim, {
     modelRotY: -0.21,
-    duration: 0.9,
+    duration: 1.8,
     ease: 'power1.inOut',
   })
   // Gentle showcase turn to the right (+12° = +0.21 rad):
   .to(anim, {
     modelRotY: 0.21,
-    duration: 0.9,
+    duration: 1.8,
     ease: 'power1.inOut',
   })
   // Return to front center:
   .to(anim, {
     modelRotY: 0.0,
-    duration: 0.4,
+    duration: 0.45,
     ease: 'power1.out',
   })
 
-  // --- Phase 4: Outro Showcase (180vh Section, Slow Elegant Turntable Rotation) ---
+  // --- Phase 4: Outro Showcase (0.951 -> 1.000, duration: 2.45s) ---
   // Top 55% reserved for 3D model, bottom 45% for typography & buttons:
   .to(anim, {
     explode: 0.0,
@@ -775,7 +781,7 @@ function initScrollTriggers() {
   // Majestic continuous slow turntable rotation:
   .to(anim, {
     modelRotY: Math.PI * 2.0, // Full 360° elegant revolution
-    duration: 4.0, // Slow graceful turntable
+    duration: 1.65, // Slow graceful turntable
     ease: 'none',
   });
 }
@@ -875,61 +881,30 @@ function render() {
     modelRoot.rotation.x = anim.modelRotX - (state.mouse.y * 0.10 * zoomFactor);
     modelRoot.rotation.z = anim.modelRotZ;
 
-    // 7. Component Explosion & Sub-Assembly Isolation Geometry
+    // 7. Component Centering, Explosion & Sub-Assembly Isolation Geometry
+    // Center modelRoot at origin when Chapter 1 (Bayonet) or Chapter 3 (Dials) is isolated
+    const targetRootPos = (state.activeSubAssembly === 'BAYONET' || state.activeSubAssembly === 'DIALS')
+      ? new THREE.Vector3(0, 0, 0)
+      : overallModelCenter.clone().negate();
+
+    modelRoot.position.lerp(targetRootPos, 0.12);
+
     moduleExplodeVectors.forEach((modVec, mesh) => {
       const orig = originalTransforms.get(mesh);
       const micro = microExplodeVectors.get(mesh);
       if (!orig || !mesh.visible) return;
 
-      // When fully assembled and no chapter is active, lock strictly to original CAD transform
-      if (anim.explode === 0.0 && state.activeSubAssembly === null) {
-        mesh.position.copy(orig.position);
-        mesh.rotation.copy(orig.rotation);
-        mesh.currentMacroZ = 0.0;
-        mesh.currentOffsetX = 0.0;
-        mesh.currentOffsetY = 0.0;
-        mesh.currentOffsetZ = 0.0;
-        return;
-      }
+      const isIsolatedHero = (state.activeSubAssembly === 'BAYONET' && subAssemblySets.BAYONET.has(mesh)) ||
+                             (state.activeSubAssembly === 'DIALS' && subAssemblySets.DIALS.has(mesh));
 
-      // Exact centering for single featured components when chapter is isolated:
-      let targetOffsetX = 0;
-      let targetOffsetY = 0;
-      let targetOffsetZ = 0;
-
-      if (state.activeSubAssembly === 'BAYONET' && subAssemblySets.BAYONET.has(mesh)) {
-        const c = meshCenters.get(mesh);
-        if (c) {
-          targetOffsetX = -c.x;
-          targetOffsetY = -c.y;
-          targetOffsetZ = -c.z;
-        }
-      } else if (state.activeSubAssembly === 'DIALS' && subAssemblySets.DIALS.has(mesh)) {
-        const c = meshCenters.get(mesh);
-        if (c) {
-          targetOffsetX = -c.x;
-          targetOffsetY = -c.y;
-          targetOffsetZ = -c.z;
-        }
-      }
-
-      if (mesh.currentOffsetX === undefined) {
-        mesh.currentOffsetX = targetOffsetX;
-        mesh.currentOffsetY = targetOffsetY;
-        mesh.currentOffsetZ = targetOffsetZ;
+      let targetPos;
+      if (isIsolatedHero) {
+        const gc = meshGeoCenters.get(mesh);
+        targetPos = gc ? gc.clone().negate() : orig.position.clone();
       } else {
-        mesh.currentOffsetX += (targetOffsetX - mesh.currentOffsetX) * 0.14;
-        mesh.currentOffsetY += (targetOffsetY - mesh.currentOffsetY) * 0.14;
-        mesh.currentOffsetZ += (targetOffsetZ - mesh.currentOffsetZ) * 0.14;
-      }
-
-      const isIsolated = state.activeSubAssembly !== null;
-      const targetMacroZ = isIsolated ? 0.0 : modVec.z * anim.explode;
-
-      if (mesh.currentMacroZ === undefined) {
-        mesh.currentMacroZ = targetMacroZ;
-      } else {
-        mesh.currentMacroZ += (targetMacroZ - mesh.currentMacroZ) * 0.14;
+        const macroZ = (state.activeSubAssembly !== null) ? 0.0 : modVec.z * anim.explode;
+        targetPos = orig.position.clone();
+        targetPos.z += macroZ;
       }
 
       // Micro component movement during chapter inspections
@@ -950,9 +925,11 @@ function render() {
         }
       }
 
-      mesh.position.x = orig.position.x + mesh.currentOffsetX + microX;
-      mesh.position.y = orig.position.y + mesh.currentOffsetY + microY;
-      mesh.position.z = orig.position.z + (isIsolated ? mesh.currentOffsetZ : mesh.currentMacroZ) + microZ;
+      targetPos.x += microX;
+      targetPos.y += microY;
+      targetPos.z += microZ;
+
+      mesh.position.lerp(targetPos, 0.12);
     });
 
     // Sound Snap detents for Sub-Assemblies

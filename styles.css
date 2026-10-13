@@ -231,7 +231,7 @@ body {
   pointer-events: none;
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  padding: 0 clamp(1rem, 3.5vw, 4rem);
+  padding: 0 clamp(1.5rem, 4vw, 5rem);
 }
 .grid-col {
   border-right: 1px solid var(--hairline);
@@ -360,18 +360,19 @@ body {
 }
 .explode-backdrop-text {
   font-size: clamp(3rem, 7.5vw, 7.5rem);
-  font-weight: 300;
-  letter-spacing: -0.035em;
-  color: rgba(24, 27, 30, 0.24); /* Clearly readable kinetic backdrop */
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  color: rgba(24, 27, 30, 0.25); /* Clearly readable kinetic backdrop */
   line-height: 1.0;
   white-space: nowrap;
   user-select: none;
 }
 .explode-backdrop-sub {
   font-family: var(--font-mono);
-  font-size: clamp(0.72rem, 1.1vw, 0.95rem);
+  font-size: clamp(0.75rem, 1.1vw, 1.0rem);
+  font-weight: 500;
   letter-spacing: 0.22em;
-  color: rgba(24, 27, 30, 0.48);
+  color: rgba(24, 27, 30, 0.55);
   margin-top: 1.25rem;
   text-transform: uppercase;
   user-select: none;
@@ -379,7 +380,7 @@ body {
 
 /* --- Phase 2: Chapters (Alternating 50/50 Split Sides) --- */
 .chapter-section {
-  min-height: 160vh;
+  min-height: 100vh;
   display: grid;
   grid-template-columns: repeat(12, 1fr);
   align-items: center;
@@ -391,10 +392,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  max-width: min(480px, 42vw);
+  max-width: min(440px, 36vw);
   position: relative;
   z-index: 10;
-  background: rgba(253, 253, 253, 0.72);
+  background: rgba(253, 253, 253, 0.76);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   padding: 1.75rem 2rem;
@@ -408,7 +409,7 @@ body {
 
 .block-left {
   grid-column: 1 / span 5;
-  margin-left: 2rem;
+  margin-left: 0;
 }
 .block-right {
   grid-column: 8 / span 5;
