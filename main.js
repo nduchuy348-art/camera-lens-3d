@@ -12,6 +12,9 @@ const state = {
   currentChapter: 0,
   mouse: { x: 0, y: 0, targetX: 0, targetY: 0 },
   hotspotsVisible: false,
+  isMacroZoomed: false,
+  lastDetent: 0,
+  activeSubAssembly: null,
 };
 
 // DOM Elements
@@ -22,6 +25,9 @@ const preloaderBar = document.getElementById('preloader-bar');
 const canvas = document.getElementById('webgl-canvas');
 const btnReplay = document.getElementById('btn-replay');
 const btnToggleFinish = document.getElementById('btn-toggle-finish');
+const watermarkInner = document.getElementById('watermark-inner');
+const leaderLine = document.getElementById('leader-line');
+const leaderPoint = document.getElementById('leader-point');
 
 // Hotspots
 const hotspotViewfinder = document.getElementById('hotspot-viewfinder');
@@ -76,7 +82,7 @@ gsap.ticker.lagSmoothing(0);
    THREE.JS SCENE, CAMERA & LIGHTING ARCHITECTURE
    ========================================================================== */
 const scene = new THREE.Scene();
-scene.background = null; // Transparent to allow CSS radial gradient & dark mode transition
+scene.background = null; // Transparent for CSS radial backdrop & dark mode transitions
 
 const camera = new THREE.PerspectiveCamera(
   36, // Cinematic portrait focal compression
@@ -89,9 +95,10 @@ const cameraRig = new THREE.Group();
 scene.add(cameraRig);
 cameraRig.add(camera);
 
-// Initial Camera Positioning
-const baseCameraPos = new THREE.Vector3(-0.95, -2.40, 0.65);
-const baseTargetPos = new THREE.Vector3(0, 0, 0);
+// Initial Camera Positioning: Cinematic Hero Front-High 25° Oblique
+// Elevated 25°, yaw 15° facing the iconic camera face, completely hiding the rear screen
+const baseCameraPos = new THREE.Vector3(-0.62, -2.25, 1.02);
+const baseTargetPos = new THREE.Vector3(0, -0.05, 0.12);
 camera.position.copy(baseCameraPos);
 camera.lookAt(baseTargetPos);
 
@@ -110,7 +117,7 @@ renderer.toneMappingExposure = 1.18;
 const ambientLight = new THREE.AmbientLight(0xFFFFFF, 0.85);
 scene.add(ambientLight);
 
-// Key Light (Soft Warm Studio Front-Right)
+// Key Light (Specular Highlight Tracker)
 const keyLight = new THREE.DirectionalLight(0xFFFBF5, 2.8);
 keyLight.position.set(2.4, -2.2, 2.5);
 scene.add(keyLight);
@@ -120,13 +127,25 @@ const fillLight = new THREE.DirectionalLight(0xF0F4FF, 1.4);
 fillLight.position.set(-2.8, -1.8, 1.2);
 scene.add(fillLight);
 
-// Rim / Top Bevel Light (Sharp Edge Highlights)
+// Rim / Top Bevel Light (Sharp Edge Chamfer Highlights)
 const rimLight = new THREE.DirectionalLight(0xF8FAFC, 2.2);
 rimLight.position.set(0.2, 2.5, 2.8);
 scene.add(rimLight);
 
+// Edolus 3D Orbital Coordinate Ring
+const orbitalRingGeom = new THREE.RingGeometry(0.85, 0.853, 64);
+const orbitalRingMat = new THREE.MeshBasicMaterial({
+  color: 0x181B1E,
+  side: THREE.DoubleSide,
+  transparent: true,
+  opacity: 0.16,
+});
+const orbitalRing = new THREE.Mesh(orbitalRingGeom, orbitalRingMat);
+orbitalRing.rotation.x = Math.PI / 2.3;
+scene.add(orbitalRing);
+
 /* ==========================================================================
-   MATERIALS FOR REAL-TIME BLACK / SILVER FINISH SWITCHER
+   MATERIALS & SOLIDWORKS ASSEMBLY ISOLATION SHADERS
    ========================================================================== */
 const matBlackAnodized = new THREE.MeshStandardMaterial({
   color: new THREE.Color(0x18181A),
@@ -140,22 +159,40 @@ const matSilverChrome = new THREE.MeshStandardMaterial({
   roughness: 0.20,
 });
 
+// SolidWorks Ghost Material (translucent glass with subtle hairline silhouette)
+const matSolidWorksGhost = new THREE.MeshStandardMaterial({
+  color: new THREE.Color(0x94A3B8),
+  roughness: 0.85,
+  metalness: 0.1,
+  transparent: true,
+  opacity: 0.08,
+  depthWrite: false,
+});
+
 /* ==========================================================================
-   MODEL LOADING & 66-COMPONENT EXPLOSION VECTORS
+   MODEL LOADING & 66-COMPONENT T-EXPLOSION GEOMETRY
    ========================================================================== */
 const originalTransforms = new Map();
+const originalMaterials = new Map();
 const explodeVectors = new Map();
 let modelRoot = null;
 const bodyPlates = []; // Objects that change finish (Body Top, Body Bottom, Accessory Shoe)
 
+const subAssemblySets = {
+  BAYONET: new Set(),
+  SENSOR: new Set(),
+  DIALS: new Set(),
+};
+
 function classifyAndAssignVectors(obj) {
   if (!obj.isMesh) return;
 
-  // Cache base position
+  // Cache base transforms and material
   originalTransforms.set(obj, {
     position: obj.position.clone(),
     rotation: obj.rotation.clone(),
   });
+  originalMaterials.set(obj, obj.material);
 
   const name = obj.name.toLowerCase();
 
@@ -164,69 +201,110 @@ function classifyAndAssignVectors(obj) {
     bodyPlates.push(obj);
   }
 
-  // Calculate anatomically accurate exploded displacement vectors
+  // Group into Sub-Assemblies
+  if (name.includes('lens cap') || name.includes('bayonet') || name.includes('release button') || name.includes('selector')) {
+    subAssemblySets.BAYONET.add(obj);
+  } else if (name.includes('brightness sensor') || name.includes('sensor')) {
+    subAssemblySets.SENSOR.add(obj);
+  } else if (name.includes('dial') || name.includes('shoe') || name.includes('switch') || name.includes('thumb') || name.includes('body top')) {
+    subAssemblySets.DIALS.add(obj);
+  }
+
+  // Orthographic T-Explosion Displacement Vectors (2.5x Scale)
   const vec = new THREE.Vector3(0, 0, 0);
 
-  // 1. Top Plate & Upper Controls (+Z axis)
-  if (name.includes('shutter speed dial')) {
-    vec.set(0.12, 0.02, 0.46);
-  } else if (name.includes('iso dial')) {
-    vec.set(-0.18, 0.02, 0.48);
-  } else if (name.includes('main switch') || name.includes('function button')) {
-    vec.set(0.18, 0.04, 0.40);
-  } else if (name.includes('shoe')) {
-    vec.set(0, 0, 0.38);
-  } else if (name.includes('thumb wheel')) {
-    vec.set(0.22, 0.06, 0.35);
-  } else if (name.includes('body top')) {
-    vec.set(0, 0, 0.24);
-  } else if (name.includes('eyepiece')) {
-    vec.set(-0.15, 0.18, 0.28);
-  }
-  // 2. Base Plate, Battery & Levers (-Z axis)
-  else if (name.includes('battery release') || name.includes('lever')) {
-    vec.set(-0.14, 0, -0.32);
-  } else if (name.includes('battery')) {
-    vec.set(-0.16, 0, -0.48);
-  } else if (name.includes('body bottom')) {
-    vec.set(0, 0, -0.28);
-  }
-  // 3. Front Bayonet, Cap & Optical Windows (-Y axis)
-  else if (name.includes('lens cap font')) {
-    vec.set(0.04, -0.62, 0);
+  // 1. Front Optical Barrel (-Y axis disengagement)
+  if (name.includes('lens cap font')) {
+    vec.set(0.04, -1.65, 0);
   } else if (name.includes('lens cap')) {
-    vec.set(0.04, -0.52, 0);
+    vec.set(0.04, -1.35, 0);
   } else if (name.includes('bayonet')) {
-    vec.set(0.04, -0.32, 0);
+    vec.set(0.04, -0.95, 0);
   } else if (name.includes('badge')) {
-    vec.set(0.12, -0.24, 0.04);
+    vec.set(0.12, -0.65, 0.04);
   } else if (name.includes('release button') || name.includes('selector')) {
-    vec.set(0.22, -0.20, 0);
+    vec.set(0.24, -0.55, 0);
   } else if (name.includes('window') || name.includes('brightness sensor') || name.includes('glass')) {
-    vec.set(-0.08, -0.26, 0.02);
+    vec.set(-0.08, -0.65, 0.02);
   }
-  // 4. Rear Touchscreen & Buttons (+Y axis)
+  // 2. Vertical Auxiliary Deck (+Z skyward controls)
+  else if (name.includes('shutter speed dial')) {
+    vec.set(0.12, 0.02, 1.15);
+  } else if (name.includes('iso dial')) {
+    vec.set(-0.18, 0.02, 1.25);
+  } else if (name.includes('main switch') || name.includes('function button')) {
+    vec.set(0.18, 0.04, 1.05);
+  } else if (name.includes('shoe')) {
+    vec.set(0, 0, 0.85);
+  } else if (name.includes('thumb wheel')) {
+    vec.set(0.22, 0.06, 0.75);
+  } else if (name.includes('body top')) {
+    vec.set(0, 0, 0.65);
+  } else if (name.includes('eyepiece')) {
+    vec.set(-0.15, 0.18, 0.70);
+  }
+  // 3. Vertical Auxiliary Deck (-Z downward base & power)
+  else if (name.includes('battery release') || name.includes('lever')) {
+    vec.set(-0.14, 0, -0.95);
+  } else if (name.includes('battery')) {
+    vec.set(-0.16, 0, -1.25);
+  } else if (name.includes('body bottom')) {
+    vec.set(0, 0, -0.75);
+  }
+  // 4. Rear Touchscreen & Electronics (+Y backward)
   else if (name.includes('lcd') || name.includes('plane')) {
-    vec.set(0, 0.32, 0);
+    vec.set(0, 1.15, 0);
   }
-  // 5. Strap Lugs (Side displacement ±X axis)
+  // 5. Lateral Wings (±X outward)
   else if (name.includes('strap lugs.001')) {
-    vec.set(0.24, 0, 0);
+    vec.set(0.48, 0, 0);
   } else if (name.includes('strap lugs')) {
-    vec.set(-0.24, 0, 0);
+    vec.set(-0.48, 0, 0);
   }
-  // 6. Body Middle (Anchor)
+  // 6. Die-cast Chassis (Rigid Anchor at 0, 0, 0)
   else if (name.includes('middle')) {
     vec.set(0, 0, 0);
   } else {
-    // Default outward displacement
-    vec.set(0, 0, 0.15);
+    vec.set(0, 0, 0.35);
   }
 
   explodeVectors.set(obj, vec);
 }
 
-// Model Loading with Progress Tracking
+// SolidWorks Assembly Ghost Mode Controller
+function setSubAssemblyFocus(key) {
+  state.activeSubAssembly = key;
+  if (!modelRoot) return;
+
+  modelRoot.traverse((obj) => {
+    if (!obj.isMesh) return;
+
+    if (!key) {
+      // Restore all original materials
+      const origMat = originalMaterials.get(obj);
+      if (bodyPlates.includes(obj)) {
+        obj.material = state.finish === 'silver' ? matSilverChrome : matBlackAnodized;
+      } else {
+        obj.material = origMat;
+      }
+    } else {
+      const activeSet = subAssemblySets[key];
+      if (activeSet && activeSet.has(obj)) {
+        // Active Sub-Assembly: Keep rich solid PBR materials
+        if (bodyPlates.includes(obj)) {
+          obj.material = state.finish === 'silver' ? matSilverChrome : matBlackAnodized;
+        } else {
+          obj.material = originalMaterials.get(obj);
+        }
+      } else {
+        // Inactive components: Render as SolidWorks Ghost
+        obj.material = matSolidWorksGhost;
+      }
+    }
+  });
+}
+
+// Model Loading with Real-Time Percentage Tracking
 const loader = new GLTFLoader();
 const modelUrl = './assets/leica_m11_master.glb';
 
@@ -294,19 +372,23 @@ loader.load(
 );
 
 /* ==========================================================================
-   GSAP SCROLLTRIGGER ORCHESTRATION (THE 4 PHASES)
+   GSAP SCROLLTRIGGER ORCHESTRATION (PINNED DWELL & FLUID SCRUB)
    ========================================================================== */
 const anim = {
   explode: 0.0,
   camX: baseCameraPos.x,
   camY: baseCameraPos.y,
   camZ: baseCameraPos.z,
-  lookX: 0,
-  lookY: 0,
-  lookZ: 0,
+  lookX: baseTargetPos.x,
+  lookY: baseTargetPos.y,
+  lookZ: baseTargetPos.z,
   modelRotY: 0,
   modelRotX: 0,
   modelRotZ: 0,
+  heroExtractX: 0,
+  heroExtractY: 0,
+  heroExtractZ: 0,
+  orbitalOpacity: 1.0,
 };
 
 function initScrollTriggers() {
@@ -318,7 +400,7 @@ function initScrollTriggers() {
       end: 'bottom bottom',
       scrub: 1.2, // Smooth inertia scrub
       onUpdate: (self) => {
-        // Audible mechanical detent tick as user scrolls through chapters
+        // Audible mechanical detent tick as user scrolls
         const progress = self.progress;
         const currentDetent = Math.floor(progress * 28);
         if (currentDetent !== state.lastDetent) {
@@ -332,100 +414,116 @@ function initScrollTriggers() {
   // --- Phase 1: Explosion Initiation (Hero -> Explode Intro) ---
   tl.to(anim, {
     explode: 1.0,
-    camX: -0.85,
-    camY: -2.35,
-    camZ: 0.60,
-    modelRotY: 0.22,
+    camX: -0.58,
+    camY: -2.15,
+    camZ: 0.75,
+    modelRotY: 0.15,
+    orbitalOpacity: 0.0,
     ease: 'power2.inOut',
     duration: 2.0,
+    onStart: () => setSubAssemblyFocus(null),
   })
 
-  // --- Phase 2, Chapter 1: Bayonet & Lens Cap (Model Right, Text Left) ---
+  // --- Phase 2, Chapter 1: Bayonet Mount (Hero Extraction Forward, Model Right, Text Left) ---
   .to(anim, {
     explode: 1.0,
-    camX: -0.45,
-    camY: -1.75,
-    camZ: 0.28,
-    lookX: 0.12,
-    lookY: -0.22,
+    heroExtractY: -0.45, // Bayonet cluster floats forward in Hero Extraction!
+    camX: -0.55,
+    camY: -1.65,
+    camZ: 0.35,
+    lookX: 0.18,
+    lookY: -0.35,
     lookZ: 0.05,
-    modelRotY: -0.32,
-    modelRotX: 0.08,
-    ease: 'power2.inOut',
-    duration: 2.5,
-  })
-
-  // --- Phase 2, Chapter 2: 60MP Sensor & Electronics (Model Left, Text Right, DARK MODE) ---
-  .to(anim, {
-    explode: 1.15, // Expanded deeper to reveal sensor cavity
-    camX: 0.35,
-    camY: -1.25,
-    camZ: 0.22,
-    lookX: -0.05,
-    lookY: -0.05,
-    lookZ: 0.04,
-    modelRotY: 0.18,
-    modelRotX: 0.02,
+    modelRotY: -0.28,
+    modelRotX: 0.06,
     ease: 'power2.inOut',
     duration: 2.8,
+    onStart: () => setSubAssemblyFocus('BAYONET'),
   })
 
-  // --- Phase 2, Chapter 3: Tactile Controls Dials (Model High-Right, LIGHT MODE) ---
+  // --- Phase 2, Chapter 2: 60MP Sensor Core (Straight Frontal Penetration, Obsidian Dark Mode) ---
   .to(anim, {
-    explode: 0.95,
-    camX: -0.35,
-    camY: -1.45,
-    camZ: 0.95, // High camera viewing down onto top dials
-    lookX: 0.08,
-    lookY: -0.02,
-    lookZ: 0.30,
-    modelRotY: -0.25,
-    modelRotX: 0.35,
+    explode: 1.25,
+    heroExtractY: -0.35,
+    camX: 0.45,
+    camY: -1.25,
+    camZ: 0.22,
+    lookX: -0.18,
+    lookY: -0.05,
+    lookZ: 0.05,
+    modelRotY: 0.12,
+    modelRotX: 0.02,
     ease: 'power2.inOut',
-    duration: 2.5,
+    duration: 3.0,
+    onStart: () => setSubAssemblyFocus('SENSOR'),
   })
 
-  // --- Phase 2, Chapter 4: Rangefinder Heritage & Arc Gauge (Center) ---
+  // --- Phase 2, Chapter 3: Tactile Controls Dials (High Angle 60° Down, Top Deck Lifted) ---
+  .to(anim, {
+    explode: 1.0,
+    heroExtractY: 0,
+    heroExtractZ: 0.40, // Top deck lifts higher in Hero Extraction!
+    camX: -0.35,
+    camY: -1.35,
+    camZ: 1.35,
+    lookX: 0.12,
+    lookY: 0.0,
+    lookZ: 0.35,
+    modelRotY: -0.22,
+    modelRotX: 0.42,
+    ease: 'power2.inOut',
+    duration: 2.8,
+    onStart: () => setSubAssemblyFocus('DIALS'),
+  })
+
+  // --- Phase 2, Chapter 4: Technical Arc Gauge & Metric Floor (Top 65% Safe Zone) ---
   .to(anim, {
     explode: 0.85,
+    heroExtractZ: 0,
     camX: 0.0,
-    camY: -2.10,
-    camZ: 0.38,
+    camY: -2.15,
+    camZ: 0.65, // Elevated above bottom 35% table to prevent overlap
     lookX: 0.0,
     lookY: 0.0,
-    lookZ: 0.15,
+    lookZ: 0.22,
     modelRotY: 0.0,
     modelRotX: 0.05,
     ease: 'power2.inOut',
     duration: 2.6,
+    onStart: () => setSubAssemblyFocus(null),
   })
 
-  // --- Phase 3: Seamless Reassembly & Hotspots (Santalarch Polish) ---
+  // --- Phase 3: Synthesis Climax Reassembly (Decisive Mechanical Snap Detent) ---
   .to(anim, {
     explode: 0.0, // Snaps 100% back to assembled form!
-    camX: -0.75,
+    heroExtractX: 0,
+    heroExtractY: 0,
+    heroExtractZ: 0,
+    camX: -0.85,
     camY: -1.95,
-    camZ: 0.48,
+    camZ: 0.45,
     lookX: 0.0,
     lookY: 0.0,
     lookZ: 0.05,
-    modelRotY: 0.45, // Elegant 3/4 beauty rotation
+    modelRotY: 0.42, // Elegant 3/4 beauty rotation
     modelRotX: -0.04,
-    ease: 'back.out(1.2)', // Tangible mechanical snap
+    ease: 'back.out(1.5)', // Decisive mechanical detent snap
     duration: 2.4,
+    onStart: () => setSubAssemblyFocus(null),
   })
 
-  // --- Phase 4: Outro Showcase (Edolus Center Lock) ---
+  // --- Phase 4: Outro Showcase (Edolus Center Calm Rest) ---
   .to(anim, {
     explode: 0.0,
     camX: 0.0,
-    camY: -2.65, // Gentle pull back to serene center rest
-    camZ: 0.42,
+    camY: -2.45,
+    camZ: 0.40,
     lookX: 0.0,
     lookY: 0.0,
     lookZ: 0.05,
     modelRotY: 0.0,
     modelRotX: 0.0,
+    orbitalOpacity: 1.0,
     ease: 'power2.out',
     duration: 1.8,
   });
@@ -455,6 +553,7 @@ function initScrollTriggers() {
     onLeave: () => {
       state.hotspotsVisible = false;
       toggleHotspots(false);
+      resetMacroZoom();
     },
     onEnterBack: () => {
       state.hotspotsVisible = true;
@@ -463,6 +562,7 @@ function initScrollTriggers() {
     onLeaveBack: () => {
       state.hotspotsVisible = false;
       toggleHotspots(false);
+      resetMacroZoom();
     },
   });
 }
@@ -475,7 +575,7 @@ function toggleHotspots(visible) {
 }
 
 /* ==========================================================================
-   HOTSPOTS 3D-TO-2D SCREEN PROJECTION
+   HOTSPOTS 3D-TO-2D SCREEN PROJECTION & MACRO INSPECT ZOOM
    ========================================================================== */
 const hotspotPositions = {
   viewfinder: new THREE.Vector3(-0.18, -0.06, 0.20),
@@ -519,8 +619,123 @@ function updateHotspotPositions() {
   }
 }
 
+// Macro Inspect Zoom on Hotspot Click
+function zoomToHotspot(targetKey) {
+  if (!hotspotPositions[targetKey] || !modelRoot) return;
+
+  state.isMacroZoomed = true;
+  audio.playShutter();
+
+  const worldPos = hotspotPositions[targetKey].clone().applyMatrix4(modelRoot.matrixWorld);
+
+  gsap.to(camera.position, {
+    x: worldPos.x * 0.7,
+    y: worldPos.y - 0.75,
+    z: worldPos.z + 0.25,
+    duration: 1.2,
+    ease: 'power3.inOut',
+  });
+
+  gsap.to(lookTarget, {
+    x: worldPos.x,
+    y: worldPos.y,
+    z: worldPos.z,
+    duration: 1.2,
+    ease: 'power3.inOut',
+  });
+}
+
+function resetMacroZoom() {
+  if (!state.isMacroZoomed) return;
+  state.isMacroZoomed = false;
+  audio.playTick(0.9);
+
+  gsap.to(camera.position, {
+    x: anim.camX,
+    y: anim.camY,
+    z: anim.camZ,
+    duration: 1.0,
+    ease: 'power2.out',
+  });
+
+  gsap.to(lookTarget, {
+    x: anim.lookX,
+    y: anim.lookY,
+    z: anim.lookZ,
+    duration: 1.0,
+    ease: 'power2.out',
+  });
+}
+
+// Click Hotspot Listeners
+[hotspotViewfinder, hotspotShutter, hotspotBadge].forEach((el) => {
+  if (el) {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const target = el.getAttribute('data-target');
+      if (target) zoomToHotspot(target);
+    });
+  }
+});
+
+// Click outside or press ESC to reset macro zoom
+window.addEventListener('click', () => {
+  if (state.isMacroZoomed) resetMacroZoom();
+});
+
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Escape' && state.isMacroZoomed) resetMacroZoom();
+});
+
 /* ==========================================================================
-   CONTINUOUS MOUSE PARALLAX WITH SPRING INERTIA
+   DYNAMIC HAIRLINE LEADER LINE (SVG PROJECTED RETICLE)
+   ========================================================================== */
+const activeLeaderAnchor = new THREE.Vector3();
+
+function updateLeaderLine() {
+  if (!leaderLine || !leaderPoint || !modelRoot) return;
+
+  if (state.activeSubAssembly === 'BAYONET') {
+    activeLeaderAnchor.set(0.04, -0.65, 0); // Center of bayonet mount
+  } else if (state.activeSubAssembly === 'SENSOR') {
+    activeLeaderAnchor.set(0, 0.15, 0.05); // Sensor cavity
+  } else if (state.activeSubAssembly === 'DIALS') {
+    activeLeaderAnchor.set(0.12, 0.02, 0.85); // Shutter dial
+  } else {
+    leaderLine.style.opacity = '0';
+    leaderPoint.style.opacity = '0';
+    return;
+  }
+
+  tempVec.copy(activeLeaderAnchor);
+  tempVec.applyMatrix4(modelRoot.matrixWorld);
+  tempVec.project(camera);
+
+  const widthHalf = window.innerWidth / 2;
+  const heightHalf = window.innerHeight / 2;
+  const targetX = (tempVec.x * widthHalf) + widthHalf;
+  const targetY = -(tempVec.y * heightHalf) + heightHalf;
+
+  // Source coordinate from the corresponding editorial block edge
+  let srcX = window.innerWidth * 0.42;
+  if (state.activeSubAssembly === 'SENSOR') {
+    srcX = window.innerWidth * 0.58;
+  }
+  const srcY = window.innerHeight * 0.48;
+
+  leaderLine.setAttribute('x1', `${srcX}`);
+  leaderLine.setAttribute('y1', `${srcY}`);
+  leaderLine.setAttribute('x2', `${targetX}`);
+  leaderLine.setAttribute('y2', `${targetY}`);
+  leaderLine.style.opacity = '0.45';
+
+  leaderPoint.setAttribute('cx', `${targetX}`);
+  leaderPoint.setAttribute('cy', `${targetY}`);
+  leaderPoint.style.opacity = '0.9';
+}
+
+/* ==========================================================================
+   CONTINUOUS ELASTIC MOUSE ORBIT (±25°) & DYNAMIC KEY LIGHT
    ========================================================================== */
 window.addEventListener('pointermove', (e) => {
   state.mouse.targetX = (e.clientX / window.innerWidth) * 2 - 1;
@@ -571,31 +786,65 @@ function render() {
     state.mouse.x += (state.mouse.targetX - state.mouse.x) * 0.05;
     state.mouse.y += (state.mouse.targetY - state.mouse.y) * 0.05;
 
-    // 2. Camera Positioning & Direction
-    camera.position.x = anim.camX + (state.mouse.x * 0.14);
-    camera.position.y = anim.camY + (state.mouse.y * 0.14);
-    camera.position.z = anim.camZ;
+    // 2. Parallax Watermark Backdrop Drift
+    if (watermarkInner) {
+      watermarkInner.style.transform = `translate(${-state.mouse.x * 25}px, ${-state.mouse.y * 15}px)`;
+    }
 
-    lookTarget.set(anim.lookX, anim.lookY, anim.lookZ);
+    // 3. Dynamic Specular Key Light Tracking
+    keyLight.position.set(
+      2.4 + state.mouse.x * 1.5,
+      -2.2,
+      2.5 + state.mouse.y * 1.2
+    );
+
+    // 4. Edolus Orbital Coordinate Ring Rotation & Opacity
+    if (orbitalRing) {
+      orbitalRing.rotation.z += 0.003;
+      orbitalRingMat.opacity = anim.orbitalOpacity * 0.16;
+    }
+
+    // 5. Camera Positioning & Direction (Unless Macro Zoomed)
+    if (!state.isMacroZoomed) {
+      camera.position.x = anim.camX + (state.mouse.x * 0.16);
+      camera.position.y = anim.camY + (state.mouse.y * 0.16);
+      camera.position.z = anim.camZ;
+
+      lookTarget.set(anim.lookX, anim.lookY, anim.lookZ);
+    }
     camera.lookAt(lookTarget);
 
-    // 3. Model Rotations with Gentle Parallax Tilting
-    modelRoot.rotation.y = anim.modelRotY + (state.mouse.x * 0.08);
-    modelRoot.rotation.x = anim.modelRotX - (state.mouse.y * 0.08);
+    // 6. Elastic 3D Model Orbit (±25° / 0.44 rad)
+    modelRoot.rotation.y = anim.modelRotY + (state.mouse.x * 0.44);
+    modelRoot.rotation.x = anim.modelRotX - (state.mouse.y * 0.28);
     modelRoot.rotation.z = anim.modelRotZ;
 
-    // 4. Component Explosion Displacement
+    // 7. Component Explosion & Hero Extraction Displacement
     explodeVectors.forEach((offset, mesh) => {
       const orig = originalTransforms.get(mesh);
       if (orig) {
-        mesh.position.x = orig.position.x + (offset.x * anim.explode);
-        mesh.position.y = orig.position.y + (offset.y * anim.explode);
-        mesh.position.z = orig.position.z + (offset.z * anim.explode);
+        let extractX = 0;
+        let extractY = 0;
+        let extractZ = 0;
+
+        // Apply Hero Extraction delta if mesh is in active sub-assembly
+        if (state.activeSubAssembly && subAssemblySets[state.activeSubAssembly]?.has(mesh)) {
+          extractX = anim.heroExtractX;
+          extractY = anim.heroExtractY;
+          extractZ = anim.heroExtractZ;
+        }
+
+        mesh.position.x = orig.position.x + (offset.x * anim.explode) + extractX;
+        mesh.position.y = orig.position.y + (offset.y * anim.explode) + extractY;
+        mesh.position.z = orig.position.z + (offset.z * anim.explode) + extractZ;
       }
     });
 
-    // 5. Update Hotspot 2D Projections
+    // 8. Update Hotspot 2D Screen Projections
     updateHotspotPositions();
+
+    // 9. Update Dynamic Hairline Leader Line
+    updateLeaderLine();
   }
 
   renderer.render(scene, camera);

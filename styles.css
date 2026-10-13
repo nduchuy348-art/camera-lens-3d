@@ -67,7 +67,7 @@ body.is-loading {
 
 html.is-loading .scroll-container,
 body.is-loading .scroll-container {
-  opacity: 0.01; transition: opacity 0.5s ease;
+  display: none !important;
 }
 
 /* ==========================================================================
@@ -214,6 +214,45 @@ body.theme-dark .canvas-backdrop {
   background: radial-gradient(circle at 50% 50%, rgba(24, 28, 36, 0.5) 0%, rgba(12, 13, 15, 0.8) 70%, transparent 100%);
 }
 
+/* Monumental Backdrop Watermark Typography */
+.backdrop-watermark {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  overflow: hidden;
+}
+.watermark-inner {
+  font-family: var(--font-sans);
+  font-size: clamp(7rem, 20vw, 22rem);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  color: var(--ink-primary);
+  opacity: 0.055;
+  white-space: nowrap;
+  user-select: none;
+  transform: translateY(-2vh);
+  transition: opacity 0.8s ease;
+  will-change: transform;
+}
+body.theme-dark .watermark-inner {
+  opacity: 0.04;
+}
+
+/* Dynamic Hairline Leader Line Overlay */
+.leader-line-svg {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2;
+  pointer-events: none;
+  color: var(--ink-primary);
+}
+
 /* Hairline Grid Overlay (Editorial Swiss Lines) */
 .editorial-grid {
   position: fixed;
@@ -351,26 +390,37 @@ body.theme-dark .canvas-backdrop {
   color: var(--ink-secondary);
 }
 
-/* --- Phase 2 Chapters (Alternating Sides) --- */
+/* --- Phase 2 Chapters (Alternating 50/50 Split Sides) --- */
 .chapter-section {
   min-height: 160vh;
   display: grid;
   grid-template-columns: repeat(12, 1fr);
   align-items: center;
   position: relative;
+  z-index: 5;
 }
 
 .editorial-block {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  max-width: 520px;
+  max-width: 480px;
+  position: relative;
+  z-index: 10;
+  background: rgba(253, 253, 253, 0.4);
+  backdrop-filter: blur(4px);
+  padding: 1.75rem 2rem;
+  border-radius: 8px;
 }
+body.theme-dark .editorial-block {
+  background: rgba(12, 13, 15, 0.4);
+}
+
 .block-left {
-  grid-column: 1 / span 6;
+  grid-column: 1 / span 5;
 }
 .block-right {
-  grid-column: 7 / span 6;
+  grid-column: 8 / span 5;
   justify-self: end;
 }
 
@@ -577,6 +627,14 @@ body.theme-dark .hotspot-card {
   font-size: 0.85rem;
   color: var(--ink-secondary);
   line-height: 1.4;
+}
+.hotspot-card-action {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--leica-red);
+  margin-top: 0.5rem;
+  font-weight: 500;
 }
 
 /* --- Phase 4: Outro Showcase (Edolus Style) --- */
