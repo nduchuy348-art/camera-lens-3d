@@ -173,82 +173,6 @@ body {
   text-transform: uppercase;
 }
 
-/* ==========================================================================
-   TOP MINIMALIST UTILITY BAR
-   ========================================================================== */
-.top-nav-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 clamp(1.25rem, 3.5vw, 3rem);
-  z-index: 100;
-  pointer-events: none;
-}
-.nav-brand {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  pointer-events: auto;
-}
-.nav-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--leica-red);
-}
-.nav-title {
-  font-family: var(--font-sans);
-  font-weight: 700;
-  font-size: 0.85rem;
-  letter-spacing: 0.12em;
-}
-.nav-sub {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--ink-tertiary);
-  letter-spacing: 0.14em;
-}
-.nav-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  pointer-events: auto;
-}
-.nav-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.85rem;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
-  background: rgba(253, 253, 253, 0.75);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--hairline-strong);
-  border-radius: 999px;
-  color: var(--ink-primary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.nav-btn:hover {
-  background: #FFF;
-  border-color: var(--ink-primary);
-  transform: translateY(-1px);
-}
-.nav-btn.muted {
-  color: var(--ink-tertiary);
-  opacity: 0.75;
-}
-.nav-btn.muted #audio-wave-1,
-.nav-btn.muted #audio-wave-2 {
-  opacity: 0;
-}
 
 /* ==========================================================================
    WEBGL CANVAS (Fixed Background Viewport, Z-Index: 2)
@@ -267,14 +191,6 @@ body {
   display: block;
 }
 
-/* Background Atmospheric Radial Glow (Full White High-Key) */
-.canvas-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.85) 0%, rgba(253, 253, 253, 0.25) 70%, transparent 100%);
-}
 
 /* Monumental Backdrop Watermark Typography */
 .backdrop-watermark {
@@ -559,22 +475,24 @@ body {
   backdrop-filter: blur(8px);
 }
 
-/* --- Chapter 4: Drone Riotters Style Metric Floor (Clean 2-tier layout) --- */
+/* --- Chapter 4: Drone Riotters Style Metric Floor (Pinned Frozen Card) --- */
 .gauge-section,
 .drone-riotters-section {
-  min-height: 220vh;
+  height: 100vh;
+  min-height: 100vh;
   position: relative;
   z-index: 5;
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
   padding-bottom: 0;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 .gauge-hud-wrapper,
 .drone-hud-wrapper {
-  position: sticky;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  position: relative;
   width: 100%;
   max-width: 1080px;
   margin: 0 auto;
@@ -582,7 +500,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  padding-bottom: clamp(2rem, 5vh, 4.5rem);
+  padding-bottom: clamp(1.5rem, 3vh, 2.5rem);
   pointer-events: auto;
   z-index: 5;
 }
@@ -590,10 +508,11 @@ body {
 .gauge-arc-svg,
 .drone-arc-svg {
   width: 100%;
-  max-width: 760px;
+  max-width: 580px;
   height: auto;
-  margin-bottom: -0.75rem;
+  margin-bottom: -0.5rem;
   pointer-events: none;
+  opacity: 0.85;
 }
 
 .gauge-stats-row,
@@ -603,10 +522,10 @@ body {
   grid-template-columns: repeat(3, 1fr);
   border-top: 1px solid var(--hairline);
   border-bottom: 1px solid var(--hairline);
-  padding: 1.75rem 0;
+  padding: 1rem 0;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  background: rgba(253, 253, 253, 0.65);
+  background: rgba(253, 253, 253, 0.82);
 }
 .gauge-stat-item,
 .drone-stat-item {
@@ -615,18 +534,18 @@ body {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 0 1.5rem;
+  padding: 0 1.25rem;
 }
 .gauge-stat-item:not(:last-child),
 .drone-stat-item:not(:last-child) {
   border-right: 1px solid var(--hairline);
 }
 .stat-figure {
-  font-size: clamp(2rem, 3.8vw, 3.5rem);
+  font-size: clamp(1.8rem, 3.2vw, 3.0rem);
   font-weight: 300;
   line-height: 1;
   letter-spacing: -0.03em;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
   font-variant-numeric: tabular-nums;
 }
 .stat-label {
