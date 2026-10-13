@@ -17,6 +17,7 @@ const state = {
 // DOM Elements
 const preloader = document.getElementById('preloader');
 const preloaderCounter = document.getElementById('preloader-counter');
+const preloaderCounterVal = document.getElementById('preloader-counter-val');
 const preloaderBar = document.getElementById('preloader-bar');
 const canvas = document.getElementById('webgl-canvas');
 const btnReplay = document.getElementById('btn-replay');
@@ -26,6 +27,30 @@ const btnToggleFinish = document.getElementById('btn-toggle-finish');
 const hotspotViewfinder = document.getElementById('hotspot-viewfinder');
 const hotspotShutter = document.getElementById('hotspot-shutter');
 const hotspotBadge = document.getElementById('hotspot-badge');
+
+/* ==========================================================================
+   STRICT SCROLL LOCK DURING PRELOADER
+   ========================================================================== */
+document.documentElement.classList.add('is-loading');
+document.body.classList.add('is-loading');
+window.scrollTo(0, 0);
+
+const preventScrollKeys = (e) => {
+  if (['Space', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(e.code)) {
+    if (document.documentElement.classList.contains('is-loading')) {
+      e.preventDefault();
+    }
+  }
+};
+const preventScrollEvent = (e) => {
+  if (document.documentElement.classList.contains('is-loading')) {
+    e.preventDefault();
+  }
+};
+
+window.addEventListener('keydown', preventScrollKeys, { passive: false });
+window.addEventListener('wheel', preventScrollEvent, { passive: false });
+window.addEventListener('touchmove', preventScrollEvent, { passive: false });
 
 /* ==========================================================================
    SMOOTH SCROLL (LENIS) & GSAP INTEGRATION
@@ -38,6 +63,7 @@ const lenis = new Lenis({
   smoothWheel: true,
   smoothTouch: false,
 });
+lenis.stop(); // Locked until assets finish loading
 
 lenis.on('scroll', ScrollTrigger.update);
 
@@ -221,25 +247,49 @@ loader.load(
     state.isLoaded = true;
 
     // Complete Preloader Counter & Curtain Reveal
-    preloaderCounter.textContent = '100';
+    if (preloaderCounterVal) {
+      preloaderCounterVal.textContent = '100';
+    } else {
+      preloaderCounter.textContent = '100%';
+    }
     preloaderBar.style.transform = 'scaleX(1)';
 
     setTimeout(() => {
-      preloader.classList.add('loaded');
-      audio.playShutter(); // Authentic welcome shutter click!
+      // 1. Reveal scroll container and initialize triggers
+      document.documentElement.classList.remove('is-loading');
+      document.body.classList.remove('is-loading');
       initScrollTriggers();
+
+      // 2. Play shutter sound and start curtain opening animation
+      preloader.classList.add('loaded');
+      audio.playShutter();
+
+      // 3. Unlock scrolling ONLY after curtain reveal has fully finished (1.2s transition)
+      setTimeout(() => {
+        window.removeEventListener('keydown', preventScrollKeys);
+        window.removeEventListener('wheel', preventScrollEvent);
+        window.removeEventListener('touchmove', preventScrollEvent);
+        lenis.start();
+        ScrollTrigger.refresh();
+      }, 1200);
     }, 450);
   },
   (xhr) => {
     if (xhr.total > 0) {
-      const pct = Math.floor((xhr.loaded / xhr.total) * 100);
-      preloaderCounter.textContent = pct < 10 ? `0${pct}` : `${pct}`;
+      const pct = Math.min(100, Math.floor((xhr.loaded / xhr.total) * 100));
+      if (preloaderCounterVal) {
+        preloaderCounterVal.textContent = pct;
+      } else {
+        preloaderCounter.textContent = `${pct}%`;
+      }
       preloaderBar.style.transform = `scaleX(${pct / 100})`;
     }
   },
   (err) => {
     console.error('[ERROR] Failed to load Leica GLB model:', err);
-    preloaderCounter.textContent = 'ERR';
+    if (preloaderCounterVal) {
+      preloaderCounterVal.textContent = 'ERR';
+    }
   }
 );
 

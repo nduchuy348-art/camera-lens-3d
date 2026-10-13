@@ -55,6 +55,21 @@ body {
   overflow-x: hidden;
 }
 
+/* Strict Scroll Lock during Loading Phase */
+html.is-loading,
+body.is-loading {
+  overflow: hidden !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  touch-action: none !important;
+  overscroll-behavior: none !important;
+}
+
+html.is-loading .scroll-container,
+body.is-loading .scroll-container {
+  opacity: 0.01; transition: opacity 0.5s ease;
+}
+
 /* ==========================================================================
    PRELOADER (Technical Monospace Counter with Curtain Reveal)
    ========================================================================== */
@@ -128,6 +143,17 @@ body {
   letter-spacing: -0.04em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+}
+
+.counter-unit {
+  font-size: 0.45em;
+  font-weight: 400;
+  color: var(--ink-secondary);
+  margin-left: 0.15em;
+  font-family: var(--font-mono);
 }
 
 .preloader-bar-wrap {
