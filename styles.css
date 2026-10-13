@@ -43,6 +43,8 @@ html {
   background-color: var(--bg-canvas);
   color: var(--ink-primary);
   overflow-x: hidden;
+  overflow-y: auto;
+  scroll-behavior: auto;
   transition: var(--transition-theme);
 }
 
@@ -53,19 +55,7 @@ body {
   line-height: 1.5;
   transition: var(--transition-theme);
   overflow-x: hidden;
-}
-
-/* Scroll Lock during Loading Phase */
-html.is-loading,
-body.is-loading {
-  overflow: hidden !important;
-  height: 100vh !important;
-}
-
-html.is-loading .scroll-container,
-body.is-loading .scroll-container {
-  opacity: 0;
-  pointer-events: none;
+  overflow-y: auto;
 }
 
 /* ==========================================================================
@@ -78,8 +68,8 @@ body.is-loading .scroll-container {
   display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: auto;
-  transition: opacity 0.4s ease;
+  pointer-events: none; /* Never intercept scroll, wheel or touch */
+  transition: opacity 0.5s ease, visibility 0.5s ease;
 }
 
 .curtain-panel {
@@ -88,13 +78,17 @@ body.is-loading .scroll-container {
   bottom: 0;
   width: 50%;
   background: #FDFDFD;
-  transition: transform 1.2s cubic-bezier(0.85, 0, 0.15, 1);
+  transition: transform 1.0s cubic-bezier(0.85, 0, 0.15, 1);
+  pointer-events: none !important;
 }
 .curtain-left { left: 0; transform-origin: left; }
 .curtain-right { right: 0; transform-origin: right; }
 
 #preloader.loaded {
+  opacity: 0 !important;
+  visibility: hidden !important;
   pointer-events: none !important;
+  display: none !important;
 }
 #preloader.loaded .curtain-left {
   transform: translateX(-100%);
@@ -105,11 +99,12 @@ body.is-loading .scroll-container {
 #preloader.loaded .preloader-content {
   opacity: 0;
   transform: scale(0.95);
-  pointer-events: none;
+  pointer-events: none !important;
 }
 #preloader.hidden {
   display: none !important;
   visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 .preloader-content {
