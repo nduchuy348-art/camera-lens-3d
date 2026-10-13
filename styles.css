@@ -55,19 +55,17 @@ body {
   overflow-x: hidden;
 }
 
-/* Strict Scroll Lock during Loading Phase */
+/* Scroll Lock during Loading Phase */
 html.is-loading,
 body.is-loading {
   overflow: hidden !important;
   height: 100vh !important;
-  max-height: 100vh !important;
-  touch-action: none !important;
-  overscroll-behavior: none !important;
 }
 
 html.is-loading .scroll-container,
 body.is-loading .scroll-container {
-  display: none !important;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* ==========================================================================
@@ -81,6 +79,7 @@ body.is-loading .scroll-container {
   align-items: center;
   justify-content: center;
   pointer-events: auto;
+  transition: opacity 0.4s ease;
 }
 
 .curtain-panel {
@@ -94,6 +93,9 @@ body.is-loading .scroll-container {
 .curtain-left { left: 0; transform-origin: left; }
 .curtain-right { right: 0; transform-origin: right; }
 
+#preloader.loaded {
+  pointer-events: none !important;
+}
 #preloader.loaded .curtain-left {
   transform: translateX(-100%);
 }
@@ -104,6 +106,10 @@ body.is-loading .scroll-container {
   opacity: 0;
   transform: scale(0.95);
   pointer-events: none;
+}
+#preloader.hidden {
+  display: none !important;
+  visibility: hidden !important;
 }
 
 .preloader-content {
@@ -278,6 +284,8 @@ body.theme-dark .watermark-inner {
   position: relative;
   z-index: 10;
   width: 100%;
+  opacity: 1;
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .content-section {
