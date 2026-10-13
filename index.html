@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Leica M11 — The Essence of Pure Photography</title>
-  <link rel="stylesheet" href="styles.css?v=6">
+  <link rel="stylesheet" href="styles.css?v=9">
   
   <!-- Preconnect and Fonts: Outfit (Engineered Grotesk) & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -55,7 +55,7 @@
   <!-- Background Canvas Backdrop -->
   <div class="canvas-backdrop"></div>
 
-  <!-- Monumental Backdrop Typography (Z-Index: 0, Layered Behind 3D Canvas) -->
+  <!-- Monumental Backdrop Typography (Layered Behind 3D Canvas) -->
   <div class="backdrop-watermark" aria-hidden="true">
     <div class="watermark-inner" id="watermark-inner">LEICA M11</div>
   </div>
@@ -67,12 +67,6 @@
     <div class="grid-col"></div><div class="grid-col"></div><div class="grid-col"></div>
     <div class="grid-col"></div><div class="grid-col"></div><div class="grid-col"></div>
   </div>
-
-  <!-- Dynamic Hairline Leader Line Overlay -->
-  <svg class="leader-line-svg" id="leader-line-svg" xmlns="http://www.w3.org/2000/svg">
-    <line id="leader-line" x1="0" y1="0" x2="0" y2="0" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>
-    <circle id="leader-point" cx="0" cy="0" r="3" fill="#E00613" opacity="0"/>
-  </svg>
 
   <!-- Fixed Three.js WebGL Canvas -->
   <div id="webgl-container">
@@ -99,18 +93,17 @@
           The benchmark of iconic rangefinder craft. An uncompromised union of mechanical legacy and 60-megapixel precision.
         </p>
         <div class="scroll-indicator">
-          <span>↓ Scroll to Explode (66 Precision Parts)</span>
+          <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+          <span>Scroll to Explode (66 Precision Parts)</span>
         </div>
       </div>
     </section>
 
-    <!-- Phase 1: Explosion Statement -->
+    <!-- Phase 1: Monumental Kinetic Backdrop & Extended Z-Explosion -->
     <section class="content-section explode-intro-section" id="explode-intro">
-      <div class="explode-statement">
-        <span class="statement-index">01 / ARCHITECTURE</span>
-        <h2 class="statement-text">
-          66 discrete precision components. <span>Engineered to tenths of a millimeter.</span>
-        </h2>
+      <div class="explode-backdrop-wrap">
+        <div class="explode-backdrop-text">66 PRECISION COMPONENTS</div>
+        <div class="explode-backdrop-sub">ENGINEERED TO TENTHS OF A MILLIMETER</div>
       </div>
     </section>
 
@@ -134,7 +127,7 @@
       </div>
     </section>
 
-    <!-- Phase 2: Chapter 2 — 60MP BSI Sensor (Model Left, Text Right — Dark Mode) -->
+    <!-- Phase 2: Chapter 2 — 60MP BSI Sensor (Model Left, Text Right — Full White Gallery) -->
     <section class="content-section chapter-section" id="chapter-sensor">
       <div class="editorial-block block-right">
         <div class="chapter-number">CHAPTER <span>02</span> // SENSOR ENGINE</div>
@@ -209,7 +202,7 @@
       </div>
     </section>
 
-    <!-- Phase 3: Assembled & Hotspots Showcase -->
+    <!-- Phase 3: Assembled & Subsystems Showcase -->
     <section class="content-section assembled-section" id="section-assembled">
       <div class="assembled-sticky-text">
         <div class="chapter-number">PHASE <span>03</span> // SYNTHESIS</div>
@@ -219,13 +212,12 @@
         </h2>
         <div class="chapter-subhead">Tactile Harmony & Unified Precision</div>
         <p class="chapter-desc">
-          When brought together, all 66 components fuse into a singular, weather-sealed instrument weighing just 530 grams. Hover over the pulsing optical anchors to inspect deep architectural subsystems.
+          When brought together, all 66 components fuse into a singular, weather-sealed instrument weighing just 530 grams.
         </p>
       </div>
 
-      <!-- 3D Interactive Hotspot Overlays (Dynamic 3D-to-2D coordinates) -->
+      <!-- 3D Interactive Hotspot Overlays (Clean Architecture) -->
       <div class="hotspot" id="hotspot-viewfinder" data-target="viewfinder" style="display: none;">
-        <div class="hotspot-ring"></div>
         <div class="hotspot-core"></div>
         <div class="hotspot-card">
           <div class="hotspot-card-title">Rangefinder Optics</div>
@@ -235,7 +227,6 @@
       </div>
 
       <div class="hotspot" id="hotspot-shutter" data-target="shutter" style="display: none;">
-        <div class="hotspot-ring"></div>
         <div class="hotspot-core"></div>
         <div class="hotspot-card">
           <div class="hotspot-card-title">Dual Mechanical Shutter</div>
@@ -245,7 +236,6 @@
       </div>
 
       <div class="hotspot" id="hotspot-badge" data-target="badge" style="display: none;">
-        <div class="hotspot-ring"></div>
         <div class="hotspot-core"></div>
         <div class="hotspot-card">
           <div class="hotspot-card-title">The Leica Red Dot</div>
@@ -255,8 +245,9 @@
       </div>
     </section>
 
-    <!-- Phase 4: Outro Showcase (Edolus Style) -->
+    <!-- Phase 4: Outro Showcase (Vertical Stack Layout) -->
     <section class="content-section outro-section" id="section-outro">
+      <div class="outro-spacer" aria-hidden="true"></div>
       <div class="outro-content">
         <div class="outro-logo-badge">
           <!-- Leica cursive logo SVG icon -->
@@ -272,10 +263,12 @@
 
         <div class="outro-actions">
           <button class="action-btn action-btn-primary interactive" id="btn-replay">
-            <span>↺ Replay Experience</span>
+            <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            <span>Replay Experience</span>
           </button>
           <button class="action-btn interactive" id="btn-toggle-finish">
-            <span>◑ Finish: Stealth Black</span>
+            <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor"></path></svg>
+            <span id="btn-finish-label">Finish: Stealth Black</span>
           </button>
         </div>
       </div>
@@ -288,7 +281,7 @@
   <script src="./vendor/ScrollTrigger.min.js"></script>
 
   <!-- Application Entry Point -->
-  <script type="module" src="./main.js?v=6"></script>
+  <script type="module" src="./main.js?v=9"></script>
 
 <!-- VERSION SWITCHER DOCK -->
 <style>
@@ -360,7 +353,7 @@
 <nav class="version-dock" aria-label="Version Switcher">
   <span class="version-dock-label">VER:</span>
   <div class="version-links-scroll">
-    <a href="/camera-lens-3d/v1/" class="version-link" title="v1: Prototype (Swiss Minimalist)">v1</a> <a href="/camera-lens-3d/v2/" class="version-link" title="v2: Anti-AI-Slop & Optical Rings">v2</a> <a href="/camera-lens-3d/v3/" class="version-link" title="v3: Preloader % & Curtain Wipe">v3</a> <a href="/camera-lens-3d/v4/" class="version-link" title="v4: Technical Blueprint Angle">v4</a> <a href="/camera-lens-3d/v5/" class="version-link" title="v5: Coaxial Pure-Z Explosion">v5</a> <a href="/camera-lens-3d/v6/" class="version-link" title="v6: 4 Macro Modules & PBR">v6</a> <a href="/camera-lens-3d/v7/" class="version-link active" title="v7: Native Scroll Architecture">v7</a> <a href="/camera-lens-3d/v8/" class="version-link" title="v8: Hero Dwell & 3D Flight">v8</a> <a href="/camera-lens-3d/v9/" class="version-link" title="v9: Full White Gallery (Kinetic 66)">v9</a> <a href="/camera-lens-3d/v10/" class="version-link" title="v10: Snap Reassembly First">v10</a> <a href="/camera-lens-3d/v11/" class="version-link" title="v11: Math Geometric Centering">v11</a> <a href="/camera-lens-3d/v12/" class="version-link" title="v12: Mechanical Ambient Audio">v12</a> <a href="/camera-lens-3d/" class="version-link" title="v13: Drone Riotters (Mới nhất)">v13 (Mới nhất)</a>
+    <a href="/camera-lens-3d/v1/" class="version-link" title="v1: Prototype (Swiss Minimalist)">v1</a> <a href="/camera-lens-3d/v2/" class="version-link" title="v2: Anti-AI-Slop & Optical Rings">v2</a> <a href="/camera-lens-3d/v3/" class="version-link" title="v3: Preloader % & Curtain Wipe">v3</a> <a href="/camera-lens-3d/v4/" class="version-link" title="v4: Technical Blueprint Angle">v4</a> <a href="/camera-lens-3d/v5/" class="version-link" title="v5: Coaxial Pure-Z Explosion">v5</a> <a href="/camera-lens-3d/v6/" class="version-link" title="v6: 4 Macro Modules & PBR">v6</a> <a href="/camera-lens-3d/v7/" class="version-link" title="v7: Native Scroll Architecture">v7</a> <a href="/camera-lens-3d/v8/" class="version-link" title="v8: Hero Dwell & 3D Flight">v8</a> <a href="/camera-lens-3d/v9/" class="version-link active" title="v9: Full White Gallery (Kinetic 66)">v9</a> <a href="/camera-lens-3d/v10/" class="version-link" title="v10: Snap Reassembly First">v10</a> <a href="/camera-lens-3d/v11/" class="version-link" title="v11: Math Geometric Centering">v11</a> <a href="/camera-lens-3d/v12/" class="version-link" title="v12: Mechanical Ambient Audio">v12</a> <a href="/camera-lens-3d/" class="version-link" title="v13: Drone Riotters (Mới nhất)">v13 (Mới nhất)</a>
   </div>
 </nav>
 

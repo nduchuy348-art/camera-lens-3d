@@ -24,6 +24,12 @@ const state = {
   lastDetent: -1,
 };
 
+// Camera micro-shake state for decisive mechanical impact
+let shakeIntensity = 0;
+function triggerImpactShake() {
+  shakeIntensity = 0.012; // Damped high-frequency vibration
+}
+
 // DOM References
 const canvas = document.getElementById('webgl-canvas');
 const preloader = document.getElementById('preloader');
@@ -31,8 +37,6 @@ const preloaderCounter = document.getElementById('preloader-counter');
 const preloaderCounterVal = document.getElementById('preloader-counter-val');
 const preloaderBar = document.getElementById('preloader-bar');
 const watermarkInner = document.getElementById('watermark-inner');
-const leaderLine = document.getElementById('leader-line');
-const leaderPoint = document.getElementById('leader-point');
 
 const hotspotViewfinder = document.getElementById('hotspot-viewfinder');
 const hotspotShutter = document.getElementById('hotspot-shutter');
@@ -40,6 +44,7 @@ const hotspotBadge = document.getElementById('hotspot-badge');
 
 const btnReplay = document.getElementById('btn-replay');
 const btnToggleFinish = document.getElementById('btn-toggle-finish');
+const btnFinishLabel = document.getElementById('btn-finish-label');
 
 /* ==========================================================================
    GSAP SCROLLTRIGGER ARCHITECTURE (NATIVE 60-120HZ SCROLL ENGINE)
@@ -85,8 +90,8 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.20;
 
-// Lighting Suite
-const ambientLight = new THREE.AmbientLight(0xFFFFFF, 0.95);
+// Lighting Suite (Optimized for Pure White High-Key Gallery)
+const ambientLight = new THREE.AmbientLight(0xFFFFFF, 0.98);
 scene.add(ambientLight);
 
 // Key Light (Specular Highlight Tracker from upper-right front)
@@ -141,7 +146,7 @@ const matLeatherette = new THREE.MeshStandardMaterial({
   roughnessMap: leatheretteRoughness,
   roughness: 0.95,
   metalness: 0.04,
-  color: new THREE.Color(0xFFFFFF), // Preserve rich calibrated charcoal tones
+  color: new THREE.Color(0xFFFFFF), // Rich calibrated charcoal tones
 });
 
 // 2. Precision Diamond Knurled Normal Map for Top Deck Dials
@@ -203,17 +208,81 @@ const subAssemblySets = {
   BASEPLATE: new Set(), // Module 4: Baseplate & Rear LCD (-Z)
 };
 
+const subOpacities = {
+  BAYONET: 1.0,
+  SENSOR: 1.0,
+  DIALS: 1.0,
+  BASEPLATE: 1.0,
+};
+
+function applyOpacities() {
+  if (!modelRoot) return;
+  moduleExplodeVectors.forEach((modVec, mesh) => {
+    let op = 1.0;
+    if (subAssemblySets.BAYONET.has(mesh)) {
+      op = subOpacities.BAYONET;
+    } else if (subAssemblySets.SENSOR.has(mesh)) {
+      op = subOpacities.SENSOR;
+    } else if (subAssemblySets.DIALS.has(mesh)) {
+      op = subOpacities.DIALS;
+    } else if (subAssemblySets.BASEPLATE.has(mesh)) {
+      op = subOpacities.BASEPLATE;
+    }
+
+    if (op <= 0.01) {
+      mesh.visible = false;
+    } else {
+      mesh.visible = true;
+      if (mesh.material) {
+        mesh.material.opacity = op;
+        mesh.material.depthWrite = (op > 0.95);
+      }
+    }
+  });
+}
+
 function updateFinishMaterials() {
   const isSilver = state.finish === 'silver';
   bodyPlates.forEach((mesh) => {
-    mesh.material = isSilver ? matSilverChrome : matBlackAnodized;
+    mesh.material = (isSilver ? matSilverChrome : matBlackAnodized).clone();
+    mesh.material.transparent = true;
+    mesh.material.depthWrite = true;
   });
   dialMeshes.forEach((mesh) => {
-    mesh.material = isSilver ? matSilverKnurledDial : matBlackKnurledDial;
+    mesh.material = (isSilver ? matSilverKnurledDial : matBlackKnurledDial).clone();
+    mesh.material.transparent = true;
+    mesh.material.depthWrite = true;
   });
   if (leatheretteMesh) {
-    leatheretteMesh.material = matLeatherette;
+    leatheretteMesh.material = matLeatherette.clone();
+    leatheretteMesh.material.transparent = true;
+    leatheretteMesh.material.depthWrite = true;
   }
+  applyOpacities();
+}
+
+let subOpacityTween = null;
+function setSubAssemblyFocus(key) {
+  state.activeSubAssembly = key;
+  if (!modelRoot) return;
+
+  const targets = {
+    BAYONET: (key === 'BAYONET' || key === null) ? 1.0 : 0.0,
+    SENSOR: (key === 'SENSOR' || key === null) ? 1.0 : 0.0,
+    DIALS: (key === 'DIALS' || key === null) ? 1.0 : 0.0,
+    BASEPLATE: (key === null) ? 1.0 : 0.0,
+  };
+
+  if (subOpacityTween) subOpacityTween.kill();
+  subOpacityTween = gsap.to(subOpacities, {
+    BAYONET: targets.BAYONET,
+    SENSOR: targets.SENSOR,
+    DIALS: targets.DIALS,
+    BASEPLATE: targets.BASEPLATE,
+    duration: 0.35,
+    ease: 'power2.out',
+    onUpdate: applyOpacities,
+  });
 }
 
 function classifyAndAssignVectors(mesh) {
@@ -242,20 +311,21 @@ function classifyAndAssignVectors(mesh) {
     mesh.material = matLeatherette;
   }
 
+  mesh.material = mesh.material.clone();
+  mesh.material.transparent = true;
+  mesh.material.opacity = 1.0;
+  mesh.material.depthWrite = true;
   originalMaterials.set(mesh, mesh.material);
 
   /* ------------------------------------------------------------------------
      4 MACRO MODULE CLASSIFICATION (PURE Z-AXIS ONLY: X=0, Y=0)
-     Small parts stay assembled on their parent module during Phase 1.
      ------------------------------------------------------------------------ */
 
   // Module 1: Front Cap & Bayonet Mount (+Z)
   if (name.includes('lens cap') || name.includes('bayonet') || name.includes('release button') || name.includes('selector') || name.includes('badge')) {
     subAssemblySets.BAYONET.add(mesh);
-    // Pure Z-axis macro explosion offset: +1.45m
     moduleExplodeVectors.set(mesh, new THREE.Vector3(0, 0, 1.45));
 
-    // Micro separation within Module 1 during Chapter 1 inspection
     const micro = new THREE.Vector3(0, 0, 0);
     if (name.includes('lens cap font') || name.includes('lens cap.002')) {
       micro.set(0, 0, 0.30);
@@ -267,10 +337,8 @@ function classifyAndAssignVectors(mesh) {
   // Module 3: Top Deck & Control Dials (-Z)
   else if (name.includes('body top') || name.includes('dial') || name.includes('thumb wheel') || name.includes('accessory shoe') || name.includes('main switch') || name.includes('function button')) {
     subAssemblySets.DIALS.add(mesh);
-    // Pure Z-axis macro explosion offset: -0.70m
     moduleExplodeVectors.set(mesh, new THREE.Vector3(0, 0, -0.70));
 
-    // Micro separation within Module 3 during Chapter 3 inspection
     const micro = new THREE.Vector3(0, 0, 0);
     if (name.includes('dial') || name.includes('thumb wheel')) {
       micro.set(0, 0.12, 0); // Dials hover vertically above top deck before snap
@@ -280,17 +348,14 @@ function classifyAndAssignVectors(mesh) {
   // Module 4: Baseplate & Rear LCD (-Z)
   else if (name.includes('body bottom') || name.includes('battery') || name.includes('lcd') || name.includes('eyepiece')) {
     subAssemblySets.BASEPLATE.add(mesh);
-    // Pure Z-axis macro explosion offset: -1.40m
     moduleExplodeVectors.set(mesh, new THREE.Vector3(0, 0, -1.40));
     microExplodeVectors.set(mesh, new THREE.Vector3(0, 0, 0));
   }
   // Module 2: Central Magnesium Chassis & 60MP Core (Center Z = 0)
   else {
     subAssemblySets.SENSOR.add(mesh);
-    // Pure Z-axis macro explosion offset: Center Z = 0 (anchor)
     moduleExplodeVectors.set(mesh, new THREE.Vector3(0, 0, 0.0));
 
-    // Micro separation within Module 2 during Chapter 2 inspection
     const micro = new THREE.Vector3(0, 0, 0);
     if (name.includes('glass')) {
       micro.set(0, 0, 0.16);
@@ -331,24 +396,19 @@ loader.load(
     }
 
     setTimeout(() => {
-      // 1. Remove is-loading so scroll container becomes active
       document.documentElement.classList.remove('is-loading');
       document.body.classList.remove('is-loading');
 
-      // 2. Ensure initial window scroll is top (Hero assembled state)
       if ('scrollRestoration' in history) {
         history.scrollRestoration = 'manual';
       }
       window.scrollTo(0, 0);
 
-      // 3. Play shutter sound and start curtain opening animation
       preloader.classList.add('loaded');
       audio.playShutter();
 
-      // 4. Refresh ScrollTrigger now that container has full dimensions and model is loaded
       ScrollTrigger.refresh();
 
-      // 5. Completely hide preloader element after curtain transition completes
       setTimeout(() => {
         preloader.classList.add('hidden');
         preloader.style.display = 'none';
@@ -375,7 +435,6 @@ loader.load(
     if (preloaderCounterVal) {
       preloaderCounterVal.textContent = 'ERR';
     }
-    // Safety unlock so page does not stay locked
     document.documentElement.classList.remove('is-loading');
     document.body.classList.remove('is-loading');
     preloader.classList.add('loaded');
@@ -416,37 +475,49 @@ const anim = {
 };
 
 function initScrollTriggers() {
-  // Section Pinning & Sub-Assembly Isolation Controllers (Priority 1: spacers created first)
+  // Section Pinning & Sub-Assembly Isolation Controllers
   const chapterPins = [
-    { id: '#chapter-bayonet', key: 'BAYONET', dwell: '+=160%' },
-    { id: '#chapter-sensor', key: 'SENSOR', dwell: '+=160%' },
-    { id: '#chapter-dials', key: 'DIALS', dwell: '+=140%' },
+    { id: '#chapter-bayonet', key: 'BAYONET', prevKey: null, dwell: '+=160%' },
+    { id: '#chapter-sensor', key: 'SENSOR', prevKey: 'BAYONET', dwell: '+=160%' },
+    { id: '#chapter-dials', key: 'DIALS', prevKey: 'SENSOR', dwell: '+=140%' },
   ];
 
   chapterPins.forEach((ch) => {
+    // Early Phase Switch Trigger (top 85%) for clean fade & snap-in transition
+    ScrollTrigger.create({
+      trigger: ch.id,
+      start: 'top 85%',
+      end: 'bottom 15%',
+      onEnter: () => setSubAssemblyFocus(ch.key),
+      onLeaveBack: () => setSubAssemblyFocus(ch.prevKey),
+    });
+
+    // Pinned inspection dwell for smooth turntable sweep
     ScrollTrigger.create({
       trigger: ch.id,
       start: 'top top',
-      end: ch.dwell, // Pinned dwell for turntable inspection!
+      end: ch.dwell,
       pin: true,
       pinSpacing: true,
       refreshPriority: 1,
-      onEnter: () => { state.activeSubAssembly = ch.key; },
-      onLeave: () => { state.activeSubAssembly = null; },
-      onEnterBack: () => { state.activeSubAssembly = ch.key; },
-      onLeaveBack: () => { state.activeSubAssembly = null; },
     });
   });
 
-  // Chapter 2 Sensor Dark Theme Controller
+  // Explode Intro return to general view (all 66 components) when scrolling back up
   ScrollTrigger.create({
-    trigger: '#chapter-sensor',
-    start: 'top 65%',
-    end: 'bottom 35%',
-    onEnter: () => document.body.classList.add('theme-dark'),
-    onLeave: () => document.body.classList.remove('theme-dark'),
-    onEnterBack: () => document.body.classList.add('theme-dark'),
-    onLeaveBack: () => document.body.classList.remove('theme-dark'),
+    trigger: '#explode-intro',
+    start: 'top 85%',
+    end: 'bottom 50%',
+    onEnterBack: () => setSubAssemblyFocus(null),
+  });
+
+  // Chapter 4 Rangefinder Heritage return to general view (all 66 components)
+  ScrollTrigger.create({
+    trigger: '#chapter-rangefinder',
+    start: 'top 85%',
+    end: 'bottom top',
+    onEnter: () => setSubAssemblyFocus(null),
+    onLeaveBack: () => setSubAssemblyFocus('DIALS'),
   });
 
   // Dedicated Phase 3 Reassembly & Hotspots Controller
@@ -455,11 +526,7 @@ function initScrollTriggers() {
     start: 'top 55%',
     end: 'bottom 45%',
     onEnter: () => {
-      state.activeSubAssembly = null;
-      audio.playSnap();
-      audio.playShutter();
-      state.hotspotsVisible = true;
-      toggleHotspots(true);
+      setSubAssemblyFocus(null);
     },
     onLeave: () => {
       state.hotspotsVisible = false;
@@ -467,10 +534,7 @@ function initScrollTriggers() {
       resetMacroZoom();
     },
     onEnterBack: () => {
-      state.activeSubAssembly = null;
-      audio.playSnap();
-      state.hotspotsVisible = true;
-      toggleHotspots(true);
+      setSubAssemblyFocus(null);
     },
     onLeaveBack: () => {
       state.hotspotsVisible = false;
@@ -479,7 +543,7 @@ function initScrollTriggers() {
     },
   });
 
-  // Master Scroll Timeline spanning the entire experience (total duration = 12.9)
+  // Master Scroll Timeline spanning the entire experience (calibrated for snap at progress >= 0.78)
   const tl = gsap.timeline({
     scrollTrigger: {
       trigger: '.scroll-container',
@@ -494,12 +558,33 @@ function initScrollTriggers() {
           audio.playTick(1.0 + (progress * 0.4));
           state.lastDetent = currentDetent;
         }
+
+        // Single decisive impact snap at progress >= 0.78
+        if (progress >= 0.78) {
+          if (!state.snappedClimax) {
+            triggerImpactShake();
+            audio.playSnap();
+            audio.playShutter();
+            state.snappedClimax = true;
+          }
+          if (!state.hotspotsVisible) {
+            state.hotspotsVisible = true;
+            toggleHotspots(true);
+          }
+        } else {
+          if (progress < 0.74) {
+            state.snappedClimax = false;
+          }
+          if (state.hotspotsVisible) {
+            state.hotspotsVisible = false;
+            toggleHotspots(false);
+          }
+        }
       },
     },
   });
 
   // --- Phase 1, Step 1: Hero Overview Dwell (Model strictly 100% assembled and flush) ---
-  // During Hero, anim.explode remains strictly 0.0 with zero micro-offsets
   tl.to(anim, {
     explode: 0.0,
     subExplode1: 0.0,
@@ -514,12 +599,12 @@ function initScrollTriggers() {
     modelRotY: 0.20,
     modelRotX: 0.02,
     orbitalOpacity: 1.0,
-    duration: 1.2,
+    duration: 1.5,
     ease: 'none',
   })
 
-  // --- Phase 1, Step 2: Pure Z 4-Module Coaxial Explosion & Dynamic 3D Sweep ---
-  // Smoothly drives explode from 0.0 to 1.0 while rotating dynamically into dramatic 3/4 perspective
+  // --- Phase 1, Step 2: Extended Slow Z-Explosion (220vh Section) ---
+  // Gracefully separates the 4 modules along the optical Z-axis with dramatic perspective
   .to(anim, {
     explode: 1.0,
     subExplode1: 0.0,
@@ -531,181 +616,195 @@ function initScrollTriggers() {
     lookX: 0.0,
     lookY: 0.06,
     lookZ: 0.0,
-    modelRotY: 0.65, // Dramatic 37.2° angle clearly showing the 4 separated module slabs
+    modelRotY: 0.65, // Dramatic 37.2° angle clearly showing separated module slabs
     modelRotX: 0.14, // Elevated pitch exposing gaps between top deck and chassis
     orbitalOpacity: 0.0,
-    duration: 2.0,
+    duration: 2.5,
     ease: 'power2.inOut',
   })
 
-  // --- Phase 2, Chapter 1: Bayonet Mount & Coupling (Module 1 at +1.45m Z) ---
-  // Total Chapter 1 Duration: 2.6
-  // Flight in to macro stop (~0.35m distance to Module 1):
+  // --- Phase 2, Chapter 1: Bayonet Mount & Coupling (Safe Macro Framing camZ: 0.70m) ---
+  // Flight in to safe macro framing (0.70m distance, no cap clipping):
   .to(anim, {
     subExplode1: 1.0,
-    camX: -0.22,
-    camY: 0.20,
-    camZ: 1.82,
-    lookX: 0.02,
-    lookY: 0.02,
-    lookZ: 1.45,
+    camX: -0.18,
+    camY: 0.12,
+    camZ: 0.70,
+    lookX: 0.063,
+    lookY: -0.046,
+    lookZ: 0.0,
     modelRotY: -0.28,
     modelRotX: 0.06,
     duration: 0.6,
     ease: 'power2.inOut',
   })
-  // Scrubbed Magnetic Snap: Cap slides and snaps onto bayonet flange!
+  // Scrubbed Magnetic Snap: Cap slides and snaps onto bayonet flange
   .to(anim, {
     subExplode1: 0.0,
     duration: 0.6,
     ease: 'back.out(1.5)',
   })
-  // Inspection Dwell: Dramatic 70° angular sweep across claws, 6-bit code & red badge!
+  // Inspection Dwell: Smooth 35° rotation sweep, no clipping
   .to(anim, {
-    modelRotY: 0.45,
-    modelRotX: 0.12,
+    modelRotY: 0.35,
+    modelRotX: 0.10,
     duration: 1.0,
     ease: 'none',
   })
   // Arc transition toward central chassis:
   .to(anim, {
-    camX: -0.55,
-    camY: 0.45,
-    camZ: 1.10,
-    modelRotY: -0.40,
+    camX: -0.05,
+    camY: 0.08,
+    camZ: 0.75,
     duration: 0.4,
     ease: 'power2.inOut',
   })
 
-  // --- Phase 2, Chapter 2: 60MP Sensor Core & Magnesium Chassis (Module 2 at Z = 0) ---
-  // Total Chapter 2 Duration: 2.6
-  // Flight in to macro stop (~0.38m distance to Chassis):
+  // --- Phase 2, Chapter 2: 60MP Sensor Core & Magnesium Chassis (camZ: 0.65m) ---
+  // Flight in to safe macro framing:
   .to(anim, {
     subExplode2: 1.0,
-    camX: 0.18,
-    camY: 0.02,
-    camZ: 0.40,
+    camX: 0.12,
+    camY: 0.0,
+    camZ: 0.65,
     lookX: 0.0,
-    lookY: -0.02,
+    lookY: -0.04,
     lookZ: 0.0,
     modelRotY: -0.25,
     modelRotX: -0.06,
     duration: 0.6,
     ease: 'power2.inOut',
   })
-  // Scrubbed Magnetic Snap: Sapphire glass slides and snaps into sensor cavity!
+  // Scrubbed Magnetic Snap: Sapphire glass slides and snaps into sensor cavity
   .to(anim, {
     subExplode2: 0.0,
     duration: 0.6,
     ease: 'back.out(1.5)',
   })
-  // Inspection Dwell: Dramatic 70° angular sweep catching pebbled leatherette & sapphire glints!
+  // Inspection Dwell: 30° rotation sweep catching pebbled leatherette & sapphire glints
   .to(anim, {
-    modelRotY: 0.38,
-    modelRotX: 0.16,
+    modelRotY: 0.28,
+    modelRotX: 0.14,
     duration: 1.0,
     ease: 'none',
   })
   // Climbing arc transition toward top deck:
   .to(anim, {
-    camX: -0.45,
-    camY: 0.80,
-    camZ: 0.65,
-    modelRotY: -0.50,
-    modelRotX: 0.25,
+    camX: -0.08,
+    camY: 0.55,
+    camZ: 0.70,
     duration: 0.4,
     ease: 'power2.inOut',
   })
 
-  // --- Phase 2, Chapter 3: Tactile Controls & Top Deck Dials (Module 3 at Z = -0.70m) ---
-  // Total Chapter 3 Duration: 2.4
-  // Flight in: Climbs to 55° elevated top-down oblique view over dials:
+  // --- Phase 2, Chapter 3: Tactile Controls & Top Deck Dials (camY: 0.85m, camZ: 0.65m, pitch 52°) ---
+  // Flight in: Climbs to 52° elevated top-down view over dials prominently centered:
   .to(anim, {
     subExplode3: 1.0,
-    camX: -0.16,
-    camY: 0.66,
-    camZ: -0.38,
-    lookX: -0.06,
-    lookY: 0.26,
-    lookZ: -0.70,
-    modelRotY: -0.22,
+    camX: -0.10,
+    camY: 0.85,
+    camZ: 0.65,
+    lookX: 0.0,
+    lookY: 0.22,
+    lookZ: 0.0,
+    modelRotY: -0.20,
     modelRotX: 0.48,
     duration: 0.6,
     ease: 'power2.inOut',
   })
-  // Scrubbed Magnetic Snap: Knurled dials drop into CNC wells and snap!
+  // Scrubbed Magnetic Snap: Knurled dials drop into CNC wells and snap
   .to(anim, {
     subExplode3: 0.0,
     duration: 0.6,
     ease: 'back.out(1.5)',
   })
-  // Inspection Dwell: Diamond knurling reflections sweep across Shutter Speed & ISO Dials!
+  // Inspection Dwell: Diamond knurling reflections sweep across dials
   .to(anim, {
-    modelRotY: 0.35,
-    modelRotX: 0.45,
+    modelRotY: 0.25,
+    modelRotX: 0.46,
     duration: 0.8,
     ease: 'none',
   })
-  // Transition out:
+  // Transition toward front badge:
   .to(anim, {
-    camX: -0.10,
-    camY: 0.65,
-    camZ: 1.40,
-    modelRotY: 0.10,
-    modelRotX: 0.15,
+    camX: 0.0,
+    camY: 0.45,
+    camZ: 0.85,
     duration: 0.4,
     ease: 'power2.inOut',
   })
 
-  // --- Phase 2, Chapter 4: Architecture & Rangefinder (Full 4 Modules Exploded along Z) ---
-  // Duration: 1.0
+  // --- Phase 2, Chapter 4: Rangefinder Heritage & Red Dot Centering ---
+  // Model fully assembled and closed, camera lookTarget centers exactly on the red dot badge (0.062, 0.195, 0.101)
+  // Camera orbits ±10° around the red dot badge:
   .to(anim, {
-    explode: 1.0,
-    camX: 0.0,
-    camY: 0.65,
-    camZ: 1.85,
-    lookX: 0.0,
-    lookY: 0.12,
-    lookZ: 0.0,
+    explode: 0.0,
+    camX: -0.086,
+    camY: 0.195,
+    camZ: 0.938,
+    lookX: 0.062,
+    lookY: 0.195,
+    lookZ: 0.101,
     modelRotY: 0.0,
-    modelRotX: 0.05,
-    duration: 1.0,
+    modelRotX: 0.0,
+    duration: 0.6,
     ease: 'power2.inOut',
   })
-
-  // --- Phase 3: Synthesis Climax Reassembly (Decisive Mechanical Snap 1.0 -> 0.0) ---
-  // Duration: 1.0
+  // Dwell & gently orbits ±10° around the red dot:
   .to(anim, {
-    explode: 0.0,
-    camX: -0.30,
-    camY: 0.70,
-    camZ: 1.48,
-    lookX: 0.0,
-    lookY: 0.06,
-    lookZ: 0.0,
-    modelRotY: 0.28,
-    modelRotX: 0.0,
-    duration: 1.0,
-    ease: 'back.out(1.5)',
+    camX: 0.210,
+    camY: 0.195,
+    camZ: 0.938,
+    lookX: 0.062,
+    lookY: 0.195,
+    lookZ: 0.101,
+    duration: 0.8,
+    ease: 'none',
   })
 
-  // --- Phase 4: Outro Showcase (Edolus Center Rest) ---
-  // Duration: 1.0
+  // --- Phase 3: Synthesis Climax Reassembly ---
+  // Hover apart before decisive impact:
   .to(anim, {
-    explode: 0.0,
-    camX: 0.0,
-    camY: 0.42,
+    explode: 0.65,
+    camX: -0.30,
+    camY: 0.70,
     camZ: 1.55,
     lookX: 0.0,
     lookY: 0.06,
     lookZ: 0.0,
+    modelRotY: 0.28,
+    modelRotX: 0.05,
+    duration: 0.8,
+    ease: 'power2.inOut',
+  })
+  // SINGLE DECISIVE IMPACT (At progress >= 0.78): All 66 components snap flush!
+  .to(anim, {
+    explode: 0.0,
+    camZ: 1.48,
+    modelRotX: 0.0,
+    duration: 0.4,
+    ease: 'back.out(2.0)',
+  })
+  .to(anim, {
+    duration: 0.6,
+    ease: 'none',
+  })
+
+  // --- Phase 4: Outro Showcase (Vertical Stack Layout: Top 55% Viewport) ---
+  .to(anim, {
+    explode: 0.0,
+    camX: 0.0,
+    camY: 0.08,
+    camZ: 1.65,
+    lookX: 0.0,
+    lookY: -0.22,
+    lookZ: 0.0,
     modelRotY: 0.0,
     modelRotX: 0.0,
     orbitalOpacity: 1.0,
-    duration: 1.0,
+    duration: 2.8,
     ease: 'power2.out',
   });
-
 }
 
 // Initialize scroll triggers immediately so native scroll and animations are active from start
@@ -724,7 +823,7 @@ function toggleHotspots(visible) {
 const hotspotPositions = {
   viewfinder: new THREE.Vector3(0.308, 0.190, 0.098),
   shutter: new THREE.Vector3(-0.157, 0.256, 0.003),
-  badge: new THREE.Vector3(0.062, 0.197, 0.106),
+  badge: new THREE.Vector3(0.062, 0.195, 0.101),
 };
 
 const tempVec = new THREE.Vector3();
@@ -832,56 +931,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 /* ==========================================================================
-   DYNAMIC HAIRLINE LEADER LINE (SVG PROJECTED RETICLE)
-   ========================================================================== */
-const activeLeaderAnchor = new THREE.Vector3();
-
-function updateLeaderLine() {
-  if (!leaderLine || !leaderPoint || !modelRoot) return;
-
-  if (state.activeSubAssembly === 'BAYONET') {
-    // Module 1 is at +1.45m along Z during explosion
-    activeLeaderAnchor.set(0.052, -0.046, 0.111 + 1.45 * anim.explode);
-  } else if (state.activeSubAssembly === 'SENSOR') {
-    // Module 2 is at 0.0m along Z
-    activeLeaderAnchor.set(0.052, -0.046, -0.020);
-  } else if (state.activeSubAssembly === 'DIALS') {
-    // Module 3 is at -0.70m along Z during explosion
-    activeLeaderAnchor.set(-0.157, 0.256, 0.003 - 0.70 * anim.explode);
-  } else {
-    leaderLine.style.opacity = '0';
-    leaderPoint.style.opacity = '0';
-    return;
-  }
-
-  tempVec.copy(activeLeaderAnchor);
-  tempVec.applyMatrix4(modelRoot.matrixWorld);
-  tempVec.project(camera);
-
-  const widthHalf = window.innerWidth / 2;
-  const heightHalf = window.innerHeight / 2;
-  const targetX = (tempVec.x * widthHalf) + widthHalf;
-  const targetY = -(tempVec.y * heightHalf) + heightHalf;
-
-  let srcX = window.innerWidth * 0.38;
-  if (state.activeSubAssembly === 'SENSOR') {
-    srcX = window.innerWidth * 0.62;
-  }
-  const srcY = window.innerHeight * 0.48;
-
-  leaderLine.setAttribute('x1', `${srcX}`);
-  leaderLine.setAttribute('y1', `${srcY}`);
-  leaderLine.setAttribute('x2', `${targetX}`);
-  leaderLine.setAttribute('y2', `${targetY}`);
-  leaderLine.style.opacity = '0.5';
-
-  leaderPoint.setAttribute('cx', `${targetX}`);
-  leaderPoint.setAttribute('cy', `${targetY}`);
-  leaderPoint.style.opacity = '1.0';
-}
-
-/* ==========================================================================
-   CONTINUOUS ELASTIC MOUSE ORBIT (±25°) & DYNAMIC KEY LIGHT
+   CONTINUOUS ELASTIC MOUSE ORBIT & DYNAMIC KEY LIGHT
    ========================================================================== */
 window.addEventListener('pointermove', (e) => {
   state.mouse.targetX = (e.clientX / window.innerWidth) * 2 - 1;
@@ -905,10 +955,14 @@ if (btnToggleFinish) {
     audio.playTick(1.2);
     if (state.finish === 'black') {
       state.finish = 'silver';
-      btnToggleFinish.innerHTML = '<span>◑ Finish: Classic Silver</span>';
+      if (btnFinishLabel) {
+        btnFinishLabel.textContent = 'Finish: Classic Silver';
+      }
     } else {
       state.finish = 'black';
-      btnToggleFinish.innerHTML = '<span>◐ Finish: Stealth Black</span>';
+      if (btnFinishLabel) {
+        btnFinishLabel.textContent = 'Finish: Stealth Black';
+      }
     }
     updateFinishMaterials();
   });
@@ -945,39 +999,58 @@ function render() {
       orbitalRingMat.opacity = anim.orbitalOpacity * 0.16;
     }
 
-    // 5. Camera Positioning & Direction (Unless Macro Zoomed)
+    // 5. Adaptive Mouse Parallax (Gentle scaling by camera zoomFactor)
+    const zoomFactor = Math.min(1.0, Math.max(0.25, anim.camZ / 2.0));
+
     if (!state.isMacroZoomed) {
-      camera.position.x = anim.camX + (state.mouse.x * 0.08);
-      camera.position.y = anim.camY + (state.mouse.y * 0.08);
+      camera.position.x = anim.camX + (state.mouse.x * 0.035 * zoomFactor);
+      camera.position.y = anim.camY + (state.mouse.y * 0.035 * zoomFactor);
       camera.position.z = anim.camZ;
 
       lookTarget.set(anim.lookX, anim.lookY, anim.lookZ);
     }
+
+    // Camera Micro-Shake on Single Decisive Impact (100ms)
+    if (shakeIntensity > 0.0002) {
+      camera.position.x += (Math.random() - 0.5) * shakeIntensity;
+      camera.position.y += (Math.random() - 0.5) * shakeIntensity;
+      shakeIntensity *= 0.86;
+    }
+
     camera.lookAt(lookTarget);
 
-    // 6. Elastic 3D Model Orbit (±25° / 0.44 rad)
-    modelRoot.rotation.y = anim.modelRotY + (state.mouse.x * 0.35);
-    modelRoot.rotation.x = anim.modelRotX - (state.mouse.y * 0.22);
+    // 6. Elastic 3D Model Orbit (Restrained scaling by zoomFactor)
+    // During Chapter 4 (Rangefinder / Red Dot Centering), keep model steady so badge stays pinned in reticle!
+    const isRedDotCentering = (anim.lookX === 0.062 && anim.lookY === 0.195 && anim.lookZ === 0.101);
+    const modelOrbitScale = isRedDotCentering ? 0.0 : 1.0;
+
+    modelRoot.rotation.y = anim.modelRotY + (state.mouse.x * 0.15 * zoomFactor * modelOrbitScale);
+    modelRoot.rotation.x = anim.modelRotX - (state.mouse.y * 0.10 * zoomFactor * modelOrbitScale);
     modelRoot.rotation.z = anim.modelRotZ;
 
-    // 7. Component Explosion & 4 Macro Modules Pure Z Positioning
-    // All 66 components remain visible with seamless spatial continuity
+    // 7. Component Explosion & Sub-Assembly Isolation Geometry
     moduleExplodeVectors.forEach((modVec, mesh) => {
       const orig = originalTransforms.get(mesh);
       const micro = microExplodeVectors.get(mesh);
-      if (!orig) return;
-
-      mesh.visible = true;
+      if (!orig || !mesh.visible) return;
 
       // When fully assembled (Hero or reassembly), lock strictly to original CAD transform
       if (anim.explode === 0.0 && anim.subExplode1 === 0.0 && anim.subExplode2 === 0.0 && anim.subExplode3 === 0.0) {
         mesh.position.copy(orig.position);
         mesh.rotation.copy(orig.rotation);
+        mesh.currentMacroZ = 0.0;
         return;
       }
 
-      // Pure coaxial explosion along optical Z-axis only (X=0, Y=0)
-      const macroZ = modVec.z * anim.explode;
+      // Smooth Z-centering: when isolated, glide smoothly to 0.0; when general, glide to modVec.z * anim.explode
+      const isIsolated = state.activeSubAssembly !== null;
+      const targetMacroZ = isIsolated ? 0.0 : modVec.z * anim.explode;
+
+      if (mesh.currentMacroZ === undefined) {
+        mesh.currentMacroZ = targetMacroZ;
+      } else {
+        mesh.currentMacroZ += (targetMacroZ - mesh.currentMacroZ) * 0.14;
+      }
 
       // Micro component movement during chapter inspections
       let microX = 0, microY = 0, microZ = 0;
@@ -999,10 +1072,10 @@ function render() {
 
       mesh.position.x = orig.position.x + microX;
       mesh.position.y = orig.position.y + microY;
-      mesh.position.z = orig.position.z + macroZ + microZ;
+      mesh.position.z = orig.position.z + mesh.currentMacroZ + microZ;
     });
 
-    // Sound Snap detents for Sub-Assemblies & Synthesis Climax
+    // Sound Snap detents for Sub-Assemblies
     if (anim.subExplode1 < 0.08 && !state.snappedSub1) {
       audio.playSnap();
       state.snappedSub1 = true;
@@ -1024,19 +1097,8 @@ function render() {
       state.snappedSub3 = false;
     }
 
-    if (anim.explode < 0.08 && !state.snappedClimax && anim.subExplode1 < 0.1 && anim.subExplode2 < 0.1) {
-      audio.playSnap();
-      audio.playShutter();
-      state.snappedClimax = true;
-    } else if (anim.explode > 0.25) {
-      state.snappedClimax = false;
-    }
-
     // 8. Update Hotspot 2D Screen Projections
     updateHotspotPositions();
-
-    // 9. Update Dynamic Hairline Leader Line
-    updateLeaderLine();
   }
 
   renderer.render(scene, camera);
