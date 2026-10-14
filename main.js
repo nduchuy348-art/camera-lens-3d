@@ -729,6 +729,109 @@ function setupTimelineAndTriggers() {
   const durAssembledPin = sAssembledEnd - sAssembledPin;
   const durOutro = Math.max(1, sOutroEnd - sAssembledEnd);
 
+  function syncScrollState(scrollY) {
+    // 1. Mechanical Dial Detent Audio Click on Scroll
+    const currentDetent = Math.floor(scrollY / 45);
+    if (currentDetent !== state.lastDetent) {
+      if (state.lastDetent !== null) {
+        audio.playTick(1.0 + ((Math.abs(currentDetent) % 5) * 0.05));
+      }
+      state.lastDetent = currentDetent;
+    }
+
+    // 2. Synchronize Chapter Isolation HUD & Reticle Lines
+    let desiredMode = null;
+    if (scrollY < sBayonetPin - 80) {
+      desiredMode = null; // Hero / Explode Intro: all 66 visible
+    } else if (scrollY < (sBayonetEnd + sSensorPin) / 2) {
+      desiredMode = 'BAYONET'; // Chapter 1
+    } else if (scrollY < (sSensorEnd + sDialsPin) / 2) {
+      desiredMode = 'SENSOR'; // Chapter 2
+    } else if (scrollY < sDialsEnd + 60) {
+      desiredMode = 'DIALS'; // Chapter 3
+    } else if (scrollY < sAssembledEnd + 40) {
+      desiredMode = null; // Assembled (Phase 4 Free-Style 60MP & Phase 5 Reassembly): all 66 visible
+    } else {
+      desiredMode = 'OUTRO'; // Phase 6 Outro: Fully sacrificed model
+    }
+
+    if (state.activeSubAssembly !== desiredMode) {
+      state.activeSubAssembly = desiredMode;
+      updateChapterMaterialsAndVisibility();
+    }
+
+    // 3. Hotspots toggle during Assembled section
+    const shouldShowHotspots = (scrollY >= sAssembledPin - 30 && scrollY <= sAssembledEnd + 20);
+    if (shouldShowHotspots !== state.hotspotsVisible) {
+      toggleHotspots(shouldShowHotspots);
+    }
+
+    // 4. Decisive Climax Impact Shake & Reassembly Mechanical Snap Audio
+    if (scrollY >= sAssembledPin - 50 && scrollY <= sAssembledPin + 150) {
+      if (!state.snappedClimax) {
+        triggerImpactShake();
+        audio.playSnap();
+        audio.playShutter();
+        state.snappedClimax = true;
+      }
+    } else if (scrollY < sAssembledPin - 120 || scrollY > sAssembledEnd + 120) {
+      state.snappedClimax = false;
+    }
+
+    // 5. Cinematic Drift & Cross-Fade for Editorial Cards
+    if (cardBayonet) {
+      const p = (scrollY - sBayonetPin) / durBayonetPin;
+      const op = p < 0 ? Math.max(0, 1 + p * 3) : p > 1 ? Math.max(0, 1 - (p - 1) * 3) : 1;
+      const drift = (p - 0.5) * -30;
+      cardBayonet.style.opacity = `${op}`;
+      cardBayonet.style.transform = `translateY(${drift}px)`;
+    }
+    if (cardSensor) {
+      const p = (scrollY - sSensorPin) / durSensorPin;
+      const op = p < 0 ? Math.max(0, 1 + p * 3) : p > 1 ? Math.max(0, 1 - (p - 1) * 3) : 1;
+      const drift = (p - 0.5) * -30;
+      cardSensor.style.opacity = `${op}`;
+      cardSensor.style.transform = `translateY(${drift}px)`;
+    }
+    if (cardDials) {
+      const p = (scrollY - sDialsPin) / durDialsPin;
+      const op = p < 0 ? Math.max(0, 1 + p * 3) : p > 1 ? Math.max(0, 1 - (p - 1) * 3) : 1;
+      const drift = (p - 0.5) * -30;
+      cardDials.style.opacity = `${op}`;
+      cardDials.style.transform = `translateY(${drift}px)`;
+    }
+
+    // 6. Cinematic Drift & Fade for Free-style 60MP row
+    const freestyleContainer = document.querySelector('.freestyle-metrics-container');
+    if (freestyleContainer) {
+      const p = (scrollY - sRangefinderPin) / durRangefinderPin;
+      const op = p < 0 ? Math.max(0, 1 + p * 3.5) : p > 1 ? Math.max(0, 1 - (p - 1) * 3.5) : 1;
+      const drift = (p - 0.5) * -25;
+      freestyleContainer.style.opacity = `${op}`;
+      freestyleContainer.style.transform = `translateY(${drift}px)`;
+    }
+
+    // 7. Cinematic Drift & Fade for Phase 5 Reassembly text
+    const assembledText = document.querySelector('.assembled-sticky-text');
+    if (assembledText) {
+      const p = (scrollY - sAssembledPin) / durAssembledPin;
+      const op = p < 0 ? Math.max(0, 1 + p * 3.5) : p > 1 ? Math.max(0, 1 - (p - 1) * 3.5) : 1;
+      const drift = (p - 0.5) * -20;
+      assembledText.style.opacity = `${op}`;
+      assembledText.style.transform = `translateY(${drift}px)`;
+    }
+
+    // 8. Outro Typography Drift & Fade
+    const outroContent = document.querySelector('.outro-center-content');
+    if (outroContent) {
+      const p = (scrollY - sAssembledEnd) / durOutro;
+      const op = Math.min(1, Math.max(0, p * 2.2));
+      const drift = Math.max(0, (1 - p * 1.8) * 35);
+      outroContent.style.opacity = `${op}`;
+      outroContent.style.transform = `translateY(${drift}px)`;
+    }
+  }
+
   // 2. Master timeline calibrated 1:1 with real scroll pixels
   masterTimeline = gsap.timeline({
     scrollTrigger: {
@@ -739,105 +842,7 @@ function setupTimelineAndTriggers() {
       refreshPriority: 0,
       onUpdate: () => {
         const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-
-        // 1. Mechanical Dial Detent Audio Click on Scroll
-        const currentDetent = Math.floor(scrollY / 45);
-        if (currentDetent !== state.lastDetent) {
-          audio.playTick(1.0 + ((Math.abs(currentDetent) % 5) * 0.05));
-          state.lastDetent = currentDetent;
-        }
-
-        // 2. Synchronize Chapter Isolation HUD & Reticle Lines
-        let desiredMode = null;
-        if (scrollY < sBayonetPin - 80) {
-          desiredMode = null; // Hero / Explode Intro: all 66 visible
-        } else if (scrollY < (sBayonetEnd + sSensorPin) / 2) {
-          desiredMode = 'BAYONET'; // Chapter 1
-        } else if (scrollY < (sSensorEnd + sDialsPin) / 2) {
-          desiredMode = 'SENSOR'; // Chapter 2
-        } else if (scrollY < sDialsEnd + 60) {
-          desiredMode = 'DIALS'; // Chapter 3
-        } else if (scrollY < sAssembledEnd + 40) {
-          desiredMode = null; // Assembled (Phase 4 Free-Style 60MP & Phase 5 Reassembly): all 66 visible
-        } else {
-          desiredMode = 'OUTRO'; // Phase 6 Outro: Fully sacrificed model
-        }
-
-        if (state.activeSubAssembly !== desiredMode) {
-          state.activeSubAssembly = desiredMode;
-          updateChapterMaterialsAndVisibility();
-        }
-
-        // 3. Hotspots toggle during Assembled section
-        const shouldShowHotspots = (scrollY >= sAssembledPin - 30 && scrollY <= sAssembledEnd + 20);
-        if (shouldShowHotspots !== state.hotspotsVisible) {
-          toggleHotspots(shouldShowHotspots);
-        }
-
-        // 4. Decisive Climax Impact Shake & Reassembly Mechanical Snap Audio
-        if (scrollY >= sAssembledPin - 50 && scrollY <= sAssembledPin + 150) {
-          if (!state.snappedClimax) {
-            triggerImpactShake();
-            audio.playSnap();
-            audio.playShutter();
-            state.snappedClimax = true;
-          }
-        } else if (scrollY < sAssembledPin - 120 || scrollY > sAssembledEnd + 120) {
-          state.snappedClimax = false;
-        }
-
-        // 5. Cinematic Drift & Cross-Fade for Editorial Cards
-        if (cardBayonet) {
-          const p = (scrollY - sBayonetPin) / durBayonetPin;
-          const op = p < 0 ? Math.max(0, 1 + p * 3) : p > 1 ? Math.max(0, 1 - (p - 1) * 3) : 1;
-          const drift = (p - 0.5) * -30;
-          cardBayonet.style.opacity = `${op}`;
-          cardBayonet.style.transform = `translateY(${drift}px)`;
-        }
-        if (cardSensor) {
-          const p = (scrollY - sSensorPin) / durSensorPin;
-          const op = p < 0 ? Math.max(0, 1 + p * 3) : p > 1 ? Math.max(0, 1 - (p - 1) * 3) : 1;
-          const drift = (p - 0.5) * -30;
-          cardSensor.style.opacity = `${op}`;
-          cardSensor.style.transform = `translateY(${drift}px)`;
-        }
-        if (cardDials) {
-          const p = (scrollY - sDialsPin) / durDialsPin;
-          const op = p < 0 ? Math.max(0, 1 + p * 3) : p > 1 ? Math.max(0, 1 - (p - 1) * 3) : 1;
-          const drift = (p - 0.5) * -30;
-          cardDials.style.opacity = `${op}`;
-          cardDials.style.transform = `translateY(${drift}px)`;
-        }
-
-        // 6. Cinematic Drift & Fade for Free-style 60MP row
-        const freestyleContainer = document.querySelector('.freestyle-metrics-container');
-        if (freestyleContainer) {
-          const p = (scrollY - sRangefinderPin) / durRangefinderPin;
-          const op = p < 0 ? Math.max(0, 1 + p * 3.5) : p > 1 ? Math.max(0, 1 - (p - 1) * 3.5) : 1;
-          const drift = (p - 0.5) * -25;
-          freestyleContainer.style.opacity = `${op}`;
-          freestyleContainer.style.transform = `translateY(${drift}px)`;
-        }
-
-        // 7. Cinematic Drift & Fade for Phase 5 Reassembly text
-        const assembledText = document.querySelector('.assembled-sticky-text');
-        if (assembledText) {
-          const p = (scrollY - sAssembledPin) / durAssembledPin;
-          const op = p < 0 ? Math.max(0, 1 + p * 3.5) : p > 1 ? Math.max(0, 1 - (p - 1) * 3.5) : 1;
-          const drift = (p - 0.5) * -20;
-          assembledText.style.opacity = `${op}`;
-          assembledText.style.transform = `translateY(${drift}px)`;
-        }
-
-        // 8. Outro Typography Drift & Fade
-        const outroContent = document.querySelector('.outro-center-content');
-        if (outroContent) {
-          const p = (scrollY - sAssembledEnd) / durOutro;
-          const op = Math.min(1, Math.max(0, p * 2.2));
-          const drift = Math.max(0, (1 - p * 1.8) * 35);
-          outroContent.style.opacity = `${op}`;
-          outroContent.style.transform = `translateY(${drift}px)`;
-        }
+        syncScrollState(scrollY);
       },
     },
   });
@@ -1089,6 +1094,9 @@ function setupTimelineAndTriggers() {
     duration: durOutro * 0.45,
     ease: 'none',
   });
+
+  // Immediately synchronize active chapter and card visibility for initial load / refresh
+  syncScrollState(window.pageYOffset || document.documentElement.scrollTop);
 }
 
 setupTimelineAndTriggers();
@@ -1275,7 +1283,7 @@ function render() {
         tempTargetPos.y += microY;
         tempTargetPos.z += microZ;
 
-        mesh.position.lerp(tempTargetPos, 0.20);
+        mesh.position.lerp(tempTargetPos, isChapter3 ? 0.35 : 0.20);
       });
     }
 
