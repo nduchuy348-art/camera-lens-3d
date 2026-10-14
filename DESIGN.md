@@ -41,7 +41,7 @@
    - Outgoing sub-assemblies fade out (`duration: 0.35s`); incoming sub-assemblies fade in centered at `(0, 0, 0)` early (triggered at `top 80%`).
    - Chapter 1 Bayonet Mount: 4-claw stainless steel flange (`Bayonet.005`) and lens cap centered at `(0, 0, 0)`.
    - Chapter 2 Sensor Core: Seamless transition keeping bayonet mount flange firmly seated on chassis (`opBayonet: 1.0`, `opChassis: 1.0`), showcasing dark sensor chamber with zero glass detachment.
-   - Chapter 3 Tactile Command: Translucent silhouette pedestal (`opChassis: 0.22`, `depthWrite: false`) supporting prominent, razor-sharp knurled dials and switches (`opDials: 1.0`).
+   - Chapter 3 Tactile Command: Frosted/matte translucent frame pedestal (`opChassis: 0.48`, `opBaseplate: 0.48`) supporting prominent, razor-sharp knurled mechanical dials (`opDials: 1.0`).
 
 4. **Chapter 4 Technical Specs (60MP, ±0.02mm, ISO 64)**:
    - Camera 100% assembled, elevated to upper half of viewport (`worldPivotY: 0.38`, `camY: 0.72`, `lookY: 0.10`, `modelScale: 0.85`), floating comfortably above bottom-anchored metrics with zero text collision.

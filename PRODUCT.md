@@ -45,8 +45,8 @@ Instead of flying through chaotic pieces, components form 3 isolated sub-assembl
   - *Zero Glass Detachment*: Optical window elements are solidly locked into their bezels with zero Z-axis micro-explosion (`micro = 0, 0, 0` and `subExplode2: 0.0`).
 
 * **Sub-Assembly 3: Tactile Mechanical Controls & Silhouette Pedestal (Chapter 3)**:
-  - *Silhouette Pedestal*: Camera body and top deck subtly visible as a soft translucent foundation (`opChassis: 0.22`, `depthWrite: false`).
-  - *Hero Dials*: Knurled dials (`Shutter Speed Dial`, `ISO Dial`) and top switches 100% solid, sharp, and specular in front (`opDials: 1.0`), hovering slightly before snapping flush.
+  - *Cohesive Matte Pedestal*: Entire camera frame (top plate, central chassis with pebble leatherette, and baseplate closing the camera bottom at 48°) transitions to a solid frosted/matte translucent pedestal (`opChassis: 0.48`, `opBaseplate: 0.48`).
+  - *Hero Dials*: Knurled dials (`Shutter Speed Dial`, `ISO Dial`, thumb wheels) 100% solid, sharp, opaque, and specular in front (`opDials: 1.0`), hovering slightly before snapping flush.
 
 * **Phase 4: Technical Specs & Anchored Metric Floor (60MP, ±0.02mm, ISO 64)**:
   - Full camera 100% assembled, elevated to the upper half of the viewport (`worldPivotY: 0.38`, `camY: 0.72`, `lookY: 0.10`, `modelScale: 0.85`).

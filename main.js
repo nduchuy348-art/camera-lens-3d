@@ -952,14 +952,15 @@ function setupTimelineAndTriggers() {
   })
 
   // --- Transition from Sensor to Chapter 3 Dials (sSensorEnd -> sDialsPin) ---
-  // Camera chassis remains subtly visible as faint translucent silhouette pedestal (0.22); dials fade in crisp & solid!
+  // Camera chassis & frame form solid frosted/matte translucent silhouette pedestal (0.48); dials 100% crisp & solid (1.0)!
   .to(anim, {
     subExplode2: 0.0,
     modelScale: 1.0,
     opBayonet: 0.0,
     opSensor: 0.0,
-    opChassis: 0.22, // Faint translucent silhouette pedestal (0.20 - 0.25)
-    opDials: 1.0,   // Knurled dials prominent, 100% sharp and solid
+    opChassis: 0.48,   // Central body chassis & leatherette wrap (~0.48)
+    opBaseplate: 0.48, // Bottom plate closes camera base at 48° angle (~0.48)
+    opDials: 1.0,      // Knurled dials prominent, 100% sharp and solid
     pivotX: shutterDialCenter.x,
     pivotY: shutterDialCenter.y,
     pivotZ: shutterDialCenter.z,
@@ -1212,13 +1213,14 @@ function render() {
         } else if (subAssemblySets.SENSOR.has(mesh)) {
           baseOp = anim.opSensor;
         } else if (subAssemblySets.DIALS.has(mesh)) {
-          // In Chapter 3 (Tactile Command), Body Top and accessories act as the translucent silhouette pedestal (~0.22)
-          // and smoothly interpolate without threshold popping or opacity jumping
+          // In Chapter 3 (Tactile Command), Body Top and top accessories act as the frosted translucent silhouette pedestal (~0.48)
+          // while mechanical dials and thumb wheels remain 100% sharp, solid, and opaque (1.0)
           const meshName = (mesh.name || '').toLowerCase();
-          if (meshName.includes('body top') || meshName.includes('accessory shoe')) {
-            baseOp = Math.min(anim.opDials, anim.opChassis);
+          const isDialKnob = meshName.includes('dial') || meshName.includes('thumb wheel');
+          if (isDialKnob) {
+            baseOp = anim.opDials;   // 1.0 for featured mechanical dials/knobs
           } else {
-            baseOp = anim.opDials;   // 1.0 for dials
+            baseOp = Math.min(anim.opDials, anim.opChassis); // 0.48 for Body Top and accessories
           }
         } else if (subAssemblySets.BASEPLATE.has(mesh)) {
           baseOp = anim.opBaseplate;
