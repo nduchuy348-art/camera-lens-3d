@@ -7,11 +7,13 @@ import { audio } from './audio.js';
    ========================================================================== */
 const state = {
   isLoaded: false,
-  finish: 'black', // 'black' (Matte Anodized) or 'silver' (Classic Chrome)
+  finish: 'black', // 'black' (Matte Anodized) or 'silver' (Classic Chrome) - Defaults to Leica M11 Stealth Black
   activeSubAssembly: null, // null, 'BAYONET', 'SENSOR', 'DIALS', 'OUTRO'
   hotspotsVisible: false,
   lastDetent: Math.floor((typeof window !== 'undefined' ? (window.pageYOffset || 0) : 0) / 45),
   snappedClimax: false,
+  mountLocked: false,
+  welcomed: false,
   mouse: {
     x: 0,
     y: 0,
@@ -26,6 +28,11 @@ const watermarkInner = document.getElementById('watermark-inner');
 const btnReplay = document.getElementById('btn-replay');
 const btnToggleFinish = document.getElementById('btn-toggle-finish');
 const btnFinishLabel = document.getElementById('btn-finish-label');
+const btnSoundToggle = document.getElementById('btn-sound-toggle');
+const soundStatusLabel = document.getElementById('sound-status-label');
+const soundIconOn = document.querySelector('.sound-icon-on');
+const soundIconOff = document.querySelector('.sound-icon-off');
+const brandEditionTag = document.getElementById('brand-edition-tag');
 const preloader = document.getElementById('preloader');
 const preloaderCounter = document.getElementById('preloader-counter-val');
 const preloaderBar = document.getElementById('preloader-bar');
@@ -224,6 +231,7 @@ const hotspotPositions = {
 let modelRoot = null;
 const bodyPlates = [];
 const dialMeshes = [];
+const hardwareMeshes = [];
 let leatheretteMesh = null;
 let bayonetFlangeMesh = null;
 let shutterDialMesh = null;
@@ -254,6 +262,12 @@ function updateChapterMaterialsAndVisibility() {
 function updateFinishMaterials() {
   const isSilver = state.finish === 'silver';
   bodyPlates.forEach((mesh) => {
+    mesh.material = (isSilver ? matSilverChrome : matBlackAnodized).clone();
+    mesh.material.transparent = true;
+    mesh.material.depthWrite = true;
+    originalMaterials.set(mesh, mesh.material);
+  });
+  hardwareMeshes.forEach((mesh) => {
     mesh.material = (isSilver ? matSilverChrome : matBlackAnodized).clone();
     mesh.material.transparent = true;
     mesh.material.depthWrite = true;
@@ -303,6 +317,17 @@ function classifyAndAssignVectors(mesh) {
   } else if (name.includes('dial') || name.includes('thumb wheel')) {
     dialMeshes.push(mesh);
     mesh.material = state.finish === 'silver' ? matSilverKnurledDial : matBlackKnurledDial;
+  } else if (
+    name.includes('accessory shoe') ||
+    name.includes('main switch') ||
+    name.includes('function button') ||
+    name.includes('battery release lever') ||
+    name.includes('lens release button') ||
+    name.includes('image field selector') ||
+    name.includes('strap lugs')
+  ) {
+    hardwareMeshes.push(mesh);
+    mesh.material = state.finish === 'silver' ? matSilverChrome : matBlackAnodized;
   } else if (name.includes('mesh.052') || name.includes('body middle')) {
     leatheretteMesh = mesh;
     mesh.material = matLeatherette;
@@ -730,16 +755,34 @@ function setupTimelineAndTriggers() {
   const durOutro = Math.max(1, sOutroEnd - sAssembledEnd);
 
   function syncScrollState(scrollY) {
-    // 1. Mechanical Dial Detent Audio Click on Scroll
+    // 1. Mechanical Dial Detent Audio Click & Chapter 3 Winding Ratchet on Scroll
     const currentDetent = Math.floor(scrollY / 45);
     if (currentDetent !== state.lastDetent) {
       if (state.lastDetent !== null) {
-        audio.playTick(1.0 + ((Math.abs(currentDetent) % 5) * 0.05));
+        if (scrollY >= sDialsPin - 50 && scrollY <= sDialsEnd + 50) {
+          // Chapter 3 Tactile Command: delicate mechanical winding gear ratchet clicks!
+          audio.playRatchet();
+          if (shutterDialMesh) {
+            shutterDialMesh.rotation.y += (currentDetent > state.lastDetent ? 0.12 : -0.12);
+          }
+        } else {
+          audio.playTick(1.0 + ((Math.abs(currentDetent) % 5) * 0.05));
+        }
       }
       state.lastDetent = currentDetent;
     }
 
-    // 2. Synchronize Chapter Isolation HUD & Reticle Lines
+    // 2. Spring-Loaded Bayonet Rotation Twist & Heavy Steel Latch Click Past Chapter 1
+    if (scrollY >= sBayonetEnd - 30 && scrollY <= sSensorPin + 60) {
+      if (!state.mountLocked) {
+        audio.playMountLock();
+        state.mountLocked = true;
+      }
+    } else if (scrollY < sBayonetPin - 60) {
+      state.mountLocked = false;
+    }
+
+    // 3. Synchronize Chapter Isolation HUD & Reticle Lines
     let desiredMode = null;
     if (scrollY < sBayonetPin - 80) {
       desiredMode = null; // Hero / Explode Intro: all 66 visible
@@ -1104,27 +1147,47 @@ setupTimelineAndTriggers();
 /* ==========================================================================
    INTERACTIVE EVENTS & BUTTON ACTIONS
    ========================================================================== */
-// Auto-resume / initialize audio on first user gesture
-const initAudioOnGesture = () => {
+// Auto-resume / initialize audio on first user gesture and fire welcome Leica shutter click
+const unlockAudioOnGesture = () => {
   audio.init();
-  window.removeEventListener('wheel', initAudioOnGesture);
-  window.removeEventListener('pointerdown', initAudioOnGesture);
-  window.removeEventListener('touchstart', initAudioOnGesture);
-  window.removeEventListener('scroll', initAudioOnGesture);
-  window.removeEventListener('keydown', initAudioOnGesture);
+  if (!state.welcomed) {
+    state.welcomed = true;
+    audio.playShutter(); // Authentic welcome shutter click on first interaction!
+  }
+  const gestures = ['wheel', 'scroll', 'pointerdown', 'touchstart', 'click', 'keydown'];
+  gestures.forEach((evt) => {
+    window.removeEventListener(evt, unlockAudioOnGesture);
+  });
 };
-window.addEventListener('wheel', initAudioOnGesture, { passive: true });
-window.addEventListener('pointerdown', initAudioOnGesture, { passive: true });
-window.addEventListener('touchstart', initAudioOnGesture, { passive: true });
-window.addEventListener('scroll', initAudioOnGesture, { passive: true });
-window.addEventListener('keydown', initAudioOnGesture, { passive: true });
+['wheel', 'scroll', 'pointerdown', 'touchstart', 'click', 'keydown'].forEach((evt) => {
+  window.addEventListener(evt, unlockAudioOnGesture, { passive: true });
+});
 
 window.addEventListener('pointermove', (e) => {
   state.mouse.targetX = (e.clientX / window.innerWidth) * 2 - 1;
   state.mouse.targetY = -(e.clientY / window.innerHeight) * 2 + 1;
 });
 
-// Replay Button (Trigger Leica shutter release and scroll to top)
+// Sound Indicator & Mute Toggle Button
+if (btnSoundToggle) {
+  btnSoundToggle.addEventListener('click', () => {
+    const isMuted = audio.toggleMute();
+    if (!isMuted) {
+      audio.playApertureClick();
+    }
+    btnSoundToggle.classList.toggle('is-muted', isMuted);
+    btnSoundToggle.setAttribute('aria-pressed', (!isMuted).toString());
+    if (soundStatusLabel) {
+      soundStatusLabel.textContent = isMuted ? 'Sound: OFF' : 'Sound: ON';
+    }
+    if (soundIconOn && soundIconOff) {
+      soundIconOn.style.display = isMuted ? 'none' : 'block';
+      soundIconOff.style.display = isMuted ? 'block' : 'none';
+    }
+  });
+}
+
+// Replay Button (Trigger Leica focal-plane shutter release and scroll to top)
 if (btnReplay) {
   btnReplay.addEventListener('click', () => {
     audio.playShutter();
@@ -1132,20 +1195,65 @@ if (btnReplay) {
   });
 }
 
-// Finish Switcher (Trigger mechanical dial click)
+// Finish Switcher (Stealth Black default <-> Classic Silver Chrome toggle with aperture ring detent click)
 if (btnToggleFinish) {
   btnToggleFinish.addEventListener('click', () => {
-    audio.playTick(1.2);
+    audio.playApertureClick();
     if (state.finish === 'black') {
       state.finish = 'silver';
       if (btnFinishLabel) btnFinishLabel.textContent = 'Finish: Classic Silver';
+      if (brandEditionTag) brandEditionTag.textContent = 'Classic Silver';
+      btnToggleFinish.setAttribute('data-finish', 'silver');
     } else {
       state.finish = 'black';
       if (btnFinishLabel) btnFinishLabel.textContent = 'Finish: Stealth Black';
+      if (brandEditionTag) brandEditionTag.textContent = 'Stealth Black';
+      btnToggleFinish.setAttribute('data-finish', 'black');
     }
     updateFinishMaterials();
   });
 }
+
+// Interactive 3D Hotspots (Ratchet & Detents)
+if (hotspotShutter) {
+  hotspotShutter.style.cursor = 'pointer';
+  hotspotShutter.addEventListener('click', () => {
+    audio.playRatchet();
+    if (shutterDialMesh) {
+      gsap.to(shutterDialMesh.rotation, {
+        y: shutterDialMesh.rotation.y + Math.PI / 4,
+        duration: 0.35,
+        ease: 'power2.out',
+      });
+    }
+  });
+}
+if (hotspotViewfinder) {
+  hotspotViewfinder.style.cursor = 'pointer';
+  hotspotViewfinder.addEventListener('click', () => {
+    audio.playApertureClick();
+  });
+}
+if (hotspotBadge) {
+  hotspotBadge.style.cursor = 'pointer';
+  hotspotBadge.addEventListener('click', () => {
+    audio.playApertureClick();
+  });
+}
+
+// Chapter 3 Spec Chips Interactive Dials Simulation
+document.querySelectorAll('.interactive-chip[data-action="ratchet"]').forEach((chip) => {
+  chip.addEventListener('click', () => {
+    audio.playRatchet();
+    if (shutterDialMesh) {
+      gsap.to(shutterDialMesh.rotation, {
+        y: shutterDialMesh.rotation.y + Math.PI / 6,
+        duration: 0.25,
+        ease: 'power2.out',
+      });
+    }
+  });
+});
 
 /* ==========================================================================
    MAIN RENDER LOOP (60 FPS OPTIMIZED)

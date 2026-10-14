@@ -814,3 +814,154 @@ body {
     justify-content: center;
   }
 }
+
+/* ==========================================================================
+   TOP NAVIGATION BAR & SOUND TOGGLE HUD
+   ========================================================================== */
+.top-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: calc(1.25rem + env(safe-area-inset-top, 0px)) 2rem 1.25rem 2rem;
+  z-index: 900;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+
+.top-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  pointer-events: auto;
+  user-select: none;
+}
+
+.brand-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background-color: var(--leica-red);
+  box-shadow: 0 1px 3px rgba(224, 6, 19, 0.35);
+}
+
+.brand-name {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--ink-primary);
+  text-transform: uppercase;
+}
+
+.brand-edition {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  padding: 0.2rem 0.5rem;
+  background: var(--ink-primary);
+  color: #FFF;
+  border-radius: 3px;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+}
+
+.top-nav-controls {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sound-toggle-btn {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  padding: 0.45rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid var(--hairline-strong);
+  background: rgba(253, 253, 253, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: var(--ink-primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s var(--ease-out-expo);
+  user-select: none;
+}
+
+.sound-toggle-btn:hover {
+  background: var(--ink-primary);
+  color: #FFF;
+  border-color: var(--ink-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+.sound-toggle-btn:active {
+  transform: translateY(1px) scale(0.96);
+  transition: transform 90ms ease-out; /* 80-120ms tactile response */
+}
+
+.sound-toggle-btn:focus-visible {
+  outline: 2px solid var(--leica-red);
+  outline-offset: 2px;
+}
+
+.sound-toggle-btn.is-muted {
+  opacity: 0.65;
+  color: var(--ink-secondary);
+  border-style: dashed;
+}
+
+.sound-toggle-btn.is-muted:hover {
+  opacity: 1;
+  color: #FFF;
+  border-style: solid;
+}
+
+.sound-icon {
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.sound-toggle-label {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Interactive Spec Chips */
+.spec-chip.interactive-chip {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.spec-chip.interactive-chip:hover {
+  border-color: var(--ink-primary);
+  color: var(--ink-primary);
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-1px);
+}
+
+.spec-chip.interactive-chip:active {
+  transform: scale(0.96);
+  transition: transform 90ms ease-out;
+}
+
+@media (max-width: 768px) {
+  .top-nav {
+    padding: calc(0.85rem + env(safe-area-inset-top, 0px)) 1rem 0.85rem 1rem;
+  }
+  .brand-edition {
+    display: none;
+  }
+}
+

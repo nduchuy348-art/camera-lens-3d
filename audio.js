@@ -1,5 +1,6 @@
 // Leica M11 Mechanical Audio Engine (Web Audio API Synthesizer)
-// Provides authentic mechanical haptic clicks and focal-plane shutter snaps without external audio files.
+// Provides authentic mechanical haptic clicks, bayonet mount latching, winding ratchet gears,
+// and focal-plane shutter snaps without external audio files.
 
 class MechanicalAudioEngine {
   constructor() {
@@ -21,7 +22,7 @@ class MechanicalAudioEngine {
     }
   }
 
-  // Subtle mechanical dial click triggered on scroll detents
+  // Subtle mechanical dial click triggered on scroll detents (ball-bearing detents)
   playTick(pitchRatio = 1.0) {
     if (this.isMuted) return;
     const now = performance.now();
@@ -63,7 +64,7 @@ class MechanicalAudioEngine {
     osc.stop(t + 0.025);
   }
 
-  // Metallic snap when components dock into place
+  // Dual metallic snap when components dock into place on reassembly
   playSnap() {
     if (this.isMuted) return;
     this.init();
@@ -71,7 +72,7 @@ class MechanicalAudioEngine {
 
     const t = this.ctx.currentTime;
 
-    // 1. Impact impulse
+    // 1. Primary impact impulse
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = 'triangle';
@@ -94,7 +95,26 @@ class MechanicalAudioEngine {
     osc.start(t);
     osc.stop(t + 0.055);
 
-    // 2. Subtle metallic resonance
+    // 2. Secondary micro latch lock snap (at t + 12ms)
+    const osc2 = this.ctx.createOscillator();
+    const g2 = this.ctx.createGain();
+    osc2.type = 'square';
+    osc2.frequency.setValueAtTime(1600, t + 0.012);
+    osc2.frequency.exponentialRampToValueAtTime(250, t + 0.035);
+    g2.gain.setValueAtTime(0.05, t + 0.012);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+    osc2.connect(g2);
+    g2.connect(this.ctx.destination);
+    osc2.onended = () => {
+      try {
+        osc2.disconnect();
+        g2.disconnect();
+      } catch (e) {}
+    };
+    osc2.start(t + 0.012);
+    osc2.stop(t + 0.045);
+
+    // 3. Subtle metallic body resonance
     const resOsc = this.ctx.createOscillator();
     const resGain = this.ctx.createGain();
     resOsc.type = 'sine';
@@ -116,7 +136,7 @@ class MechanicalAudioEngine {
     resOsc.stop(t + 0.085);
   }
 
-  // Iconic Leica mechanical focal-plane shutter release
+  // Iconic Leica mechanical focal-plane shutter release (Standard v1 synthesis)
   playShutter() {
     if (this.isMuted) return;
     this.init();
@@ -198,9 +218,198 @@ class MechanicalAudioEngine {
     osc2.stop(t + 0.085);
   }
 
+  // Authentic spring-loaded bayonet rotation twist & heavy stainless steel latch click
+  playMountLock() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+
+    // Stage 1: Brushed stainless-steel rotation twist friction (55ms bandpass noise sweep)
+    const bufferSize = Math.floor(this.ctx.sampleRate * 0.055);
+    const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = Math.random() * 2 - 1;
+    }
+    const frictionNoise = this.ctx.createBufferSource();
+    frictionNoise.buffer = noiseBuffer;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(2200, t);
+    filter.frequency.exponentialRampToValueAtTime(950, t + 0.05);
+    filter.Q.setValueAtTime(3.0, t);
+    const frictionGain = this.ctx.createGain();
+    frictionGain.gain.setValueAtTime(0.035, t);
+    frictionGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+    frictionNoise.connect(filter);
+    filter.connect(frictionGain);
+    frictionGain.connect(this.ctx.destination);
+    frictionNoise.onended = () => {
+      try {
+        frictionNoise.disconnect();
+        filter.disconnect();
+        frictionGain.disconnect();
+      } catch (e) {}
+    };
+    frictionNoise.start(t);
+    frictionNoise.stop(t + 0.055);
+
+    // Stage 2: Heavy stainless steel latch lock impact (at t + 0.040)
+    const lockOsc = this.ctx.createOscillator();
+    const lockGain = this.ctx.createGain();
+    lockOsc.type = 'triangle';
+    lockOsc.frequency.setValueAtTime(650, t + 0.04);
+    lockOsc.frequency.exponentialRampToValueAtTime(120, t + 0.085);
+    lockGain.gain.setValueAtTime(0.09, t + 0.04);
+    lockGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    lockOsc.connect(lockGain);
+    lockGain.connect(this.ctx.destination);
+    lockOsc.onended = () => {
+      try {
+        lockOsc.disconnect();
+        lockGain.disconnect();
+      } catch (e) {}
+    };
+    lockOsc.start(t + 0.04);
+    lockOsc.stop(t + 0.095);
+
+    // Stage 3: Spring pin snap click (at t + 0.044)
+    const snapOsc = this.ctx.createOscillator();
+    const snapGain = this.ctx.createGain();
+    snapOsc.type = 'square';
+    snapOsc.frequency.setValueAtTime(2400, t + 0.044);
+    snapOsc.frequency.exponentialRampToValueAtTime(400, t + 0.075);
+    snapGain.gain.setValueAtTime(0.07, t + 0.044);
+    snapGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+    snapOsc.connect(snapGain);
+    snapGain.connect(this.ctx.destination);
+    snapOsc.onended = () => {
+      try {
+        snapOsc.disconnect();
+        snapGain.disconnect();
+      } catch (e) {}
+    };
+    snapOsc.start(t + 0.044);
+    snapOsc.stop(t + 0.085);
+
+    // Stage 4: High-grade flange steel ringdown (sine overtone)
+    const flangeRing = this.ctx.createOscillator();
+    const ringGain = this.ctx.createGain();
+    flangeRing.type = 'sine';
+    flangeRing.frequency.setValueAtTime(2850, t + 0.045);
+    ringGain.gain.setValueAtTime(0.022, t + 0.045);
+    ringGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    flangeRing.connect(ringGain);
+    ringGain.connect(this.ctx.destination);
+    flangeRing.onended = () => {
+      try {
+        flangeRing.disconnect();
+        ringGain.disconnect();
+      } catch (e) {}
+    };
+    flangeRing.start(t + 0.045);
+    flangeRing.stop(t + 0.13);
+  }
+
+  // Delicate mechanical winding gear ratchet clicks (watchmaker gear pawl)
+  playRatchet(pitch = 1.0) {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+
+    // Dual micro-pawl clicks spaced by 16ms
+    [0, 0.016].forEach((offset, idx) => {
+      const clickTime = t + offset;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const filter = this.ctx.createBiquadFilter();
+
+      osc.type = 'triangle';
+      const baseFreq = (3200 + idx * 400) * pitch;
+      osc.frequency.setValueAtTime(baseFreq, clickTime);
+      osc.frequency.exponentialRampToValueAtTime(1400 * pitch, clickTime + 0.009);
+
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(2200, clickTime);
+
+      gain.gain.setValueAtTime(0.038, clickTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, clickTime + 0.012);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.onended = () => {
+        try {
+          osc.disconnect();
+          filter.disconnect();
+          gain.disconnect();
+        } catch (e) {}
+      };
+      osc.start(clickTime);
+      osc.stop(clickTime + 0.015);
+    });
+  }
+
+  // Crisp aperture ring click for interactive buttons
+  playApertureClick(pitch = 1.0) {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc1 = this.ctx.createOscillator();
+    const osc2 = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
+
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(2800 * pitch, t);
+    osc1.frequency.exponentialRampToValueAtTime(900 * pitch, t + 0.014);
+
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(1500 * pitch, t);
+    osc2.frequency.exponentialRampToValueAtTime(450 * pitch, t + 0.014);
+
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(2200 * pitch, t);
+    filter.Q.setValueAtTime(2.5, t);
+
+    gain.gain.setValueAtTime(0.055, t);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.02);
+
+    osc1.connect(filter);
+    osc2.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc1.onended = () => {
+      try {
+        osc1.disconnect();
+        osc2.disconnect();
+        filter.disconnect();
+        gain.disconnect();
+      } catch (e) {}
+    };
+
+    osc1.start(t);
+    osc2.start(t);
+    osc1.stop(t + 0.022);
+    osc2.stop(t + 0.022);
+  }
+
   // Toggle mute state
   toggleMute() {
     this.isMuted = !this.isMuted;
+    return this.isMuted;
+  }
+
+  setMuted(muted) {
+    this.isMuted = !!muted;
     return this.isMuted;
   }
 }
