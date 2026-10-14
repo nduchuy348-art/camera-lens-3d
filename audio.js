@@ -51,6 +51,14 @@ class MechanicalAudioEngine {
     filter.connect(gain);
     gain.connect(this.ctx.destination);
 
+    osc.onended = () => {
+      try {
+        osc.disconnect();
+        filter.disconnect();
+        gain.disconnect();
+      } catch (e) {}
+    };
+
     osc.start(t);
     osc.stop(t + 0.025);
   }
@@ -75,6 +83,14 @@ class MechanicalAudioEngine {
 
     osc.connect(gain);
     gain.connect(this.ctx.destination);
+
+    osc.onended = () => {
+      try {
+        osc.disconnect();
+        gain.disconnect();
+      } catch (e) {}
+    };
+
     osc.start(t);
     osc.stop(t + 0.055);
 
@@ -88,6 +104,14 @@ class MechanicalAudioEngine {
 
     resOsc.connect(resGain);
     resGain.connect(this.ctx.destination);
+
+    resOsc.onended = () => {
+      try {
+        resOsc.disconnect();
+        resGain.disconnect();
+      } catch (e) {}
+    };
+
     resOsc.start(t);
     resOsc.stop(t + 0.085);
   }
@@ -110,6 +134,14 @@ class MechanicalAudioEngine {
     g1.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
     osc1.connect(g1);
     g1.connect(this.ctx.destination);
+
+    osc1.onended = () => {
+      try {
+        osc1.disconnect();
+        g1.disconnect();
+      } catch (e) {}
+    };
+
     osc1.start(t);
     osc1.stop(t + 0.035);
 
@@ -132,7 +164,17 @@ class MechanicalAudioEngine {
     whiteNoise.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
     noiseGain.connect(this.ctx.destination);
+
+    whiteNoise.onended = () => {
+      try {
+        whiteNoise.disconnect();
+        noiseFilter.disconnect();
+        noiseGain.disconnect();
+      } catch (e) {}
+    };
+
     whiteNoise.start(t + 0.01);
+    whiteNoise.stop(t + 0.05);
 
     // 3. Crisp mechanical brake stop
     const osc2 = this.ctx.createOscillator();
@@ -144,6 +186,14 @@ class MechanicalAudioEngine {
     g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
     osc2.connect(g2);
     g2.connect(this.ctx.destination);
+
+    osc2.onended = () => {
+      try {
+        osc2.disconnect();
+        g2.disconnect();
+      } catch (e) {}
+    };
+
     osc2.start(t + 0.042);
     osc2.stop(t + 0.085);
   }

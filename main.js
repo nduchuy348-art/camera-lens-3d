@@ -10,7 +10,7 @@ const state = {
   finish: 'black', // 'black' (Matte Anodized) or 'silver' (Classic Chrome)
   activeSubAssembly: null, // null, 'BAYONET', 'SENSOR', 'DIALS', 'OUTRO'
   hotspotsVisible: false,
-  lastDetent: -1,
+  lastDetent: Math.floor((typeof window !== 'undefined' ? (window.pageYOffset || 0) : 0) / 45),
   snappedClimax: false,
   mouse: {
     x: 0,
@@ -194,14 +194,6 @@ const matBayonetFlange = new THREE.MeshStandardMaterial({
   roughness: 0.12,
 });
 
-// 5. SolidWorks CAD Technical Blueprint Wireframe Material (Outro Showcase Backdrop: Opacity 0.12)
-const matSolidWorksWireframe = new THREE.MeshBasicMaterial({
-  color: 0x181B1E,
-  wireframe: true,
-  transparent: true,
-  opacity: 0.12,
-});
-
 /* ==========================================================================
    MODEL DATA, 4 MACRO MODULES & COAXIAL Z-EXPLOSION GEOMETRY
    ========================================================================== */
@@ -255,19 +247,7 @@ function updateChapterMaterialsAndVisibility() {
   moduleExplodeVectors.forEach((modVec, mesh) => {
     const origMat = originalMaterials.get(mesh);
     if (!origMat) return;
-
-    const name = mesh.name.toLowerCase();
-    if (mesh === bayonetFlangeMesh) {
-      mesh.material = matBayonetFlange;
-    } else if (subAssemblySets.DIALS.has(mesh) && (name.includes('dial') || name.includes('thumb wheel'))) {
-      mesh.material = (state.finish === 'silver' ? matSilverKnurledDial : matBlackKnurledDial);
-    } else if (name.includes('body top') || name.includes('body bottom')) {
-      mesh.material = (state.finish === 'silver' ? matSilverChrome : matBlackAnodized);
-    } else if (mesh === leatheretteMesh) {
-      mesh.material = matLeatherette;
-    } else {
-      mesh.material = origMat;
-    }
+    mesh.material = origMat;
   });
 }
 
@@ -1101,11 +1081,13 @@ const initAudioOnGesture = () => {
   audio.init();
   window.removeEventListener('wheel', initAudioOnGesture);
   window.removeEventListener('pointerdown', initAudioOnGesture);
+  window.removeEventListener('touchstart', initAudioOnGesture);
   window.removeEventListener('scroll', initAudioOnGesture);
   window.removeEventListener('keydown', initAudioOnGesture);
 };
 window.addEventListener('wheel', initAudioOnGesture, { passive: true });
 window.addEventListener('pointerdown', initAudioOnGesture, { passive: true });
+window.addEventListener('touchstart', initAudioOnGesture, { passive: true });
 window.addEventListener('scroll', initAudioOnGesture, { passive: true });
 window.addEventListener('keydown', initAudioOnGesture, { passive: true });
 
