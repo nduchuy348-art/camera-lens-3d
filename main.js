@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/GLTFLoader.js';
+import { audio } from './audio.js';
 
 /* ==========================================================================
    GLOBAL STATE & ARCHITECTURAL CONFIGURATION
@@ -238,85 +239,34 @@ let shutterDialMesh = null;
 // Macro Sub-Assemblies & Chapter Isolation Sets
 const subAssemblySets = {
   BAYONET: new Set(),
+  FRONT_MISC: new Set(),
   SENSOR: new Set(),
   DIALS: new Set(),
   BASEPLATE: new Set(),
+  CHASSIS: new Set(),
 };
 
 /* ==========================================================================
-   VISIBILITY & MATERIAL TRANSITIONS (Strict Isolation & Structural Integrity)
+   VISIBILITY & MATERIAL ASSIGNMENT
    ========================================================================== */
 function updateChapterMaterialsAndVisibility() {
   if (!modelRoot) return;
-
-  const mode = state.activeSubAssembly;
 
   moduleExplodeVectors.forEach((modVec, mesh) => {
     const origMat = originalMaterials.get(mesh);
     if (!origMat) return;
 
     const name = mesh.name.toLowerCase();
-
-    if (mode === 'BAYONET') {
-      // Chapter 1: Full Front Module (Bayonet.005, release button, image field selector, lens cap sliding out along +Z)
-      if (
-        name.includes('bayonet') ||
-        name.includes('lens cap') ||
-        name.includes('release button') ||
-        name.includes('selector') ||
-        name.includes('badge')
-      ) {
-        mesh.visible = true;
-        mesh.material = (mesh === bayonetFlangeMesh ? matBayonetFlange : origMat);
-        if (mesh.material.opacity !== undefined) mesh.material.opacity = 1.0;
-      } else {
-        mesh.visible = false;
-      }
-    } else if (mode === 'SENSOR') {
-      // Chapter 2: Central chassis (Body Middle with pebbled leatherette) & 60MP BSI CMOS sensor core
-      if (
-        name.includes('body middle') ||
-        name.includes('mesh.052') ||
-        (name.includes('sensor') && !name.includes('brightness')) ||
-        (name.includes('glass') && !name.includes('glass.002'))
-      ) {
-        mesh.visible = true;
-        mesh.material = origMat;
-        if (mesh.material.opacity !== undefined) mesh.material.opacity = 1.0;
-      } else {
-        mesh.visible = false;
-      }
-    } else if (mode === 'DIALS') {
-      // Chapter 3: Body Top seamlessly mounted with Shutter Speed Dial, ISO Dial, Thumb Wheel, Main Switch, Function Button
-      if (
-        name.includes('body top') ||
-        name.includes('dial') ||
-        name.includes('thumb wheel') ||
-        name.includes('main switch') ||
-        name.includes('function button') ||
-        name.includes('accessory shoe')
-      ) {
-        mesh.visible = true;
-        if (name.includes('dial') || name.includes('thumb wheel')) {
-          mesh.material = (state.finish === 'silver' ? matSilverKnurledDial : matBlackKnurledDial);
-        } else if (name.includes('body top')) {
-          mesh.material = (state.finish === 'silver' ? matSilverChrome : matBlackAnodized);
-        } else {
-          mesh.material = origMat;
-        }
-        if (mesh.material.opacity !== undefined) mesh.material.opacity = 1.0;
-      } else {
-        mesh.visible = false;
-      }
-    } else if (mode === 'OUTRO') {
-      // Phase 6 Outro: SolidWorks CAD Wireframe backdrop rotating 360° (opacity 0.12)
-      mesh.visible = true;
-      mesh.material = matSolidWorksWireframe;
+    if (mesh === bayonetFlangeMesh) {
+      mesh.material = matBayonetFlange;
+    } else if (subAssemblySets.DIALS.has(mesh) && (name.includes('dial') || name.includes('thumb wheel'))) {
+      mesh.material = (state.finish === 'silver' ? matSilverKnurledDial : matBlackKnurledDial);
+    } else if (name.includes('body top') || name.includes('body bottom')) {
+      mesh.material = (state.finish === 'silver' ? matSilverChrome : matBlackAnodized);
+    } else if (mesh === leatheretteMesh) {
+      mesh.material = matLeatherette;
     } else {
-      // Outside chapters (Hero, Explode Intro, Free-Style Rangefinder, Reassembly Synthesis): All 66 components visible
-      mesh.visible = true;
       mesh.material = origMat;
-      if (mesh.material.opacity !== undefined) mesh.material.opacity = 1.0;
     }
   });
 }
@@ -390,16 +340,8 @@ function classifyAndAssignVectors(mesh) {
   originalMaterials.set(mesh, mesh.material);
 
   /* 4 MACRO MODULE CLASSIFICATION (PURE COAXIAL Z-AXIS ONLY) */
-  // Module 1: Front Optics & Flange (+Z: 1.45m macro explosion)
-  if (
-    name.includes('lens cap') ||
-    name.includes('bayonet') ||
-    name.includes('release button') ||
-    name.includes('selector') ||
-    name.includes('badge') ||
-    name.includes('finder window') ||
-    name.includes('brightness sensor')
-  ) {
+  // Chapter 1: Precision Stainless Steel Bayonet Mount & Sliding Lens Cap (Clean Showcase: No Badge/Selector)
+  if (name.includes('bayonet') || name.includes('lens cap')) {
     subAssemblySets.BAYONET.add(mesh);
     moduleExplodeVectors.set(mesh, new THREE.Vector3(0, 0, 1.45));
     const micro = new THREE.Vector3(0, 0, 0);
@@ -409,6 +351,18 @@ function classifyAndAssignVectors(mesh) {
       micro.set(0, 0, 0.25);
     }
     microExplodeVectors.set(mesh, micro);
+  }
+  // Front accessories & optical windows (explodes with Module 1 in Phase 1, but NEVER shown in Chapter 1)
+  else if (
+    name.includes('release button') ||
+    name.includes('selector') ||
+    name.includes('badge') ||
+    name.includes('finder window') ||
+    name.includes('brightness sensor')
+  ) {
+    subAssemblySets.FRONT_MISC.add(mesh);
+    moduleExplodeVectors.set(mesh, new THREE.Vector3(0, 0, 1.45));
+    microExplodeVectors.set(mesh, new THREE.Vector3(0, 0, 0));
   }
   // Module 3: Top Deck & Controls (-Z: -0.70m macro explosion)
   else if (
@@ -438,7 +392,13 @@ function classifyAndAssignVectors(mesh) {
     moduleExplodeVectors.set(mesh, new THREE.Vector3(0, 0, -1.40));
     microExplodeVectors.set(mesh, new THREE.Vector3(0, 0, 0));
   }
-  // Module 2: Central Magnesium Chassis & Sensor Core (Center Z = 0.0m anchor)
+  // Module 2: Central Magnesium Chassis & Leatherette (Anchor Z = 0.0m)
+  else if (name.includes('body middle') || name.includes('mesh.052') || name.includes('strap lugs')) {
+    subAssemblySets.CHASSIS.add(mesh);
+    moduleExplodeVectors.set(mesh, new THREE.Vector3(0, 0, 0.0));
+    microExplodeVectors.set(mesh, new THREE.Vector3(0, 0, 0));
+  }
+  // Module 2: 60MP Sensor Core & Optical Cavity (Anchor Z = 0.0m)
   else {
     subAssemblySets.SENSOR.add(mesh);
     moduleExplodeVectors.set(mesh, new THREE.Vector3(0, 0, 0.0));
@@ -550,6 +510,14 @@ const anim = {
   worldPivotY: 0.05,
   worldPivotZ: 0.0,
   orbitalOpacity: 1.0,
+  // Independent module opacities for cinematic seamless transitions
+  opBayonet: 1.0,     // Chapter 1: Bayonet mount & lens cap
+  opFrontMisc: 1.0,   // Badge, selector, finder windows (fades at end of Phase 1, never in Ch 1)
+  opChassis: 1.0,     // Body Middle chassis (fades at end of Phase 1, fades back in Ch 2 & Ch 3)
+  opSensor: 1.0,      // Sensor core & cavity
+  opDials: 1.0,       // Top Deck & controls
+  opBaseplate: 1.0,   // Bottom plate & LCD
+  overallOpacity: 1.0,// Master opacity (sacrificed to 0.0 in Outro)
 };
 
 let shakeIntensity = 0.0;
@@ -789,7 +757,14 @@ function setupTimelineAndTriggers() {
       onUpdate: () => {
         const scrollY = window.pageYOffset || document.documentElement.scrollTop;
 
-        // Synchronize Chapter Isolation Materials & Visibility
+        // 1. Mechanical Dial Detent Audio Click on Scroll
+        const currentDetent = Math.floor(scrollY / 45);
+        if (currentDetent !== state.lastDetent) {
+          audio.playTick(1.0 + ((Math.abs(currentDetent) % 5) * 0.05));
+          state.lastDetent = currentDetent;
+        }
+
+        // 2. Synchronize Chapter Isolation HUD & Reticle Lines
         let desiredMode = null;
         if (scrollY < sBayonetPin - 80) {
           desiredMode = null; // Hero / Explode Intro: all 66 visible
@@ -802,7 +777,7 @@ function setupTimelineAndTriggers() {
         } else if (scrollY < sAssembledEnd + 40) {
           desiredMode = null; // Assembled (Phase 4 Free-Style 60MP & Phase 5 Reassembly): all 66 visible
         } else {
-          desiredMode = 'OUTRO'; // Phase 6 Outro: CAD wireframe backdrop
+          desiredMode = 'OUTRO'; // Phase 6 Outro: Fully sacrificed model
         }
 
         if (state.activeSubAssembly !== desiredMode) {
@@ -810,23 +785,25 @@ function setupTimelineAndTriggers() {
           updateChapterMaterialsAndVisibility();
         }
 
-        // Hotspots toggle during Assembled section
+        // 3. Hotspots toggle during Assembled section
         const shouldShowHotspots = (scrollY >= sAssembledPin - 30 && scrollY <= sAssembledEnd + 20);
         if (shouldShowHotspots !== state.hotspotsVisible) {
           toggleHotspots(shouldShowHotspots);
         }
 
-        // Decisive Climax Impact Shake at Reassembly Snap
-        if (scrollY >= sRangefinderTrans * 0.5 + sDialsEnd - 60 && scrollY <= sRangefinderTrans * 0.5 + sDialsEnd + 60) {
+        // 4. Decisive Climax Impact Shake & Reassembly Mechanical Snap Audio
+        if (scrollY >= sAssembledPin - 50 && scrollY <= sAssembledPin + 150) {
           if (!state.snappedClimax) {
             triggerImpactShake();
+            audio.playSnap();
+            audio.playShutter();
             state.snappedClimax = true;
           }
-        } else if (scrollY < sDialsEnd || scrollY > sRangefinderPin + 100) {
+        } else if (scrollY < sAssembledPin - 120 || scrollY > sAssembledEnd + 120) {
           state.snappedClimax = false;
         }
 
-        // Cinematic Drift & Cross-Fade for Editorial Cards
+        // 5. Cinematic Drift & Cross-Fade for Editorial Cards
         if (cardBayonet) {
           const p = (scrollY - sBayonetPin) / durBayonetPin;
           const op = p < 0 ? Math.max(0, 1 + p * 3) : p > 1 ? Math.max(0, 1 - (p - 1) * 3) : 1;
@@ -849,7 +826,7 @@ function setupTimelineAndTriggers() {
           cardDials.style.transform = `translateY(${drift}px)`;
         }
 
-        // Cinematic Drift & Fade for Free-style 60MP row
+        // 6. Cinematic Drift & Fade for Free-style 60MP row
         const freestyleContainer = document.querySelector('.freestyle-metrics-container');
         if (freestyleContainer) {
           const p = (scrollY - sRangefinderPin) / durRangefinderPin;
@@ -859,7 +836,7 @@ function setupTimelineAndTriggers() {
           freestyleContainer.style.transform = `translateY(${drift}px)`;
         }
 
-        // Cinematic Drift & Fade for Phase 5 Reassembly text
+        // 7. Cinematic Drift & Fade for Phase 5 Reassembly text
         const assembledText = document.querySelector('.assembled-sticky-text');
         if (assembledText) {
           const p = (scrollY - sAssembledPin) / durAssembledPin;
@@ -869,12 +846,12 @@ function setupTimelineAndTriggers() {
           assembledText.style.transform = `translateY(${drift}px)`;
         }
 
-        // Outro Typography Drift & Fade
+        // 8. Outro Typography Drift & Fade
         const outroContent = document.querySelector('.outro-center-content');
         if (outroContent) {
           const p = (scrollY - sAssembledEnd) / durOutro;
-          const op = Math.min(1, Math.max(0, p * 2.5));
-          const drift = Math.max(0, (1 - p * 2.0) * 30);
+          const op = Math.min(1, Math.max(0, p * 2.2));
+          const drift = Math.max(0, (1 - p * 1.8) * 35);
           outroContent.style.opacity = `${op}`;
           outroContent.style.transform = `translateY(${drift}px)`;
         }
@@ -902,6 +879,13 @@ function setupTimelineAndTriggers() {
     modelRotY: 0.65, // 37° oblique angle
     modelRotX: 0.12,
     orbitalOpacity: 0.0,
+    opBayonet: 1.0,
+    opFrontMisc: 1.0,
+    opChassis: 1.0,
+    opSensor: 1.0,
+    opDials: 1.0,
+    opBaseplate: 1.0,
+    overallOpacity: 1.0,
     duration: tExplodeEnd,
     ease: 'power1.out',
   })
@@ -911,13 +895,20 @@ function setupTimelineAndTriggers() {
     duration: tExplodeHold - tExplodeEnd,
     ease: 'none',
   })
-  // Smooth transition into Chapter 1 (Bayonet)
+  // Seamless transition into Chapter 1 (NO PREMATURE SNAP):
+  // Modules 2, 3, 4 & non-bayonet parts fade out smoothly to 0.0; camera glides to bayonet center!
+  // Explode remains 1.0 so parts NEVER snap together prematurely!
   .to(anim, {
-    explode: 0.0,
+    opFrontMisc: 0.0,
+    opChassis: 0.0,
+    opSensor: 0.0,
+    opDials: 0.0,
+    opBaseplate: 0.0,
+    opBayonet: 1.0,
     modelScale: 1.0,
     pivotX: bayonetCenter.x,
     pivotY: bayonetCenter.y,
-    pivotZ: bayonetCenter.z,
+    pivotZ: bayonetCenter.z + 1.45, // Flange is at +1.45m in exploded state
     worldPivotX: 0.12, // Offset right for left text
     worldPivotY: 0.05,
     worldPivotZ: 0.0,
@@ -934,7 +925,7 @@ function setupTimelineAndTriggers() {
   })
 
   // --- Phase 2, Chapter 1: Bayonet Pinned Dwell (sBayonetPin -> sBayonetEnd) ---
-  // Lens cap slides out along +Z, dynamic angle sweeps
+  // Only Bayonet.005 and lens cap sliding along Z are showcased
   .to(anim, {
     subExplode1: 1.0, // Lens cap slides forward +Z, exposing stainless steel flange
     modelRotY: -0.30, // Multi-angle sweep
@@ -943,8 +934,13 @@ function setupTimelineAndTriggers() {
   })
 
   // --- Transition from Bayonet to Chapter 2 Sensor (sBayonetEnd -> sSensorPin) ---
+  // Smoothly fade in central body chassis (Body Middle) and Sensor core
   .to(anim, {
     subExplode1: 0.0,
+    explode: 0.0, // Settle explode while other modules are invisible (zero jump)
+    opBayonet: 0.0,
+    opChassis: 1.0, // Central body chassis smoothly fades in from transparent to solid
+    opSensor: 1.0,  // 60MP sensor inside fades in
     pivotX: sensorCenter.x,
     pivotY: sensorCenter.y,
     pivotZ: sensorCenter.z,
@@ -964,7 +960,7 @@ function setupTimelineAndTriggers() {
   })
 
   // --- Phase 2, Chapter 2: Sensor Core Pinned Dwell (sSensorPin -> sSensorEnd) ---
-  // 100% Full White Gallery, sensor glass hovers slightly
+  // Central magnesium chassis & 60MP sensor core
   .to(anim, {
     subExplode2: 1.0,
     modelRotY: 0.35, // Multi-angle sweep catching sensor optics
@@ -973,9 +969,13 @@ function setupTimelineAndTriggers() {
   })
 
   // --- Transition from Sensor to Chapter 3 Dials (sSensorEnd -> sDialsPin) ---
+  // Body Middle chassis REMAINS visible as solid foundation; Body Top and knurled dials fade in!
   .to(anim, {
     subExplode2: 0.0,
     modelScale: 1.0,
+    opSensor: 0.0,
+    opChassis: 1.0, // Keep chassis continuously visible as solid foundation
+    opDials: 1.0,   // Body Top and Dials appear gradually
     pivotX: shutterDialCenter.x,
     pivotY: shutterDialCenter.y,
     pivotZ: shutterDialCenter.z,
@@ -988,14 +988,14 @@ function setupTimelineAndTriggers() {
     lookX: 0.10,
     lookY: 0.05,
     lookZ: 0.0,
-    modelRotX: 0.18, // Camera pitch down ~48° onto top deck
+    modelRotX: 0.22, // Camera pitch down ~48° onto top deck
     modelRotY: -0.20,
     duration: durDialsTrans,
     ease: 'power2.inOut',
   })
 
   // --- Phase 2, Chapter 3: Tactile Controls Pinned Dwell (sDialsPin -> sDialsEnd) ---
-  // Solid Body Top mounted, knurled dials prominent, zero hollow underside visible
+  // Solid Body Top mounted on Body Middle chassis, knurled dials prominent, zero floating dial
   .to(anim, {
     subExplode3: 0.60,
     modelRotY: 0.20,
@@ -1010,6 +1010,7 @@ function setupTimelineAndTriggers() {
   })
 
   // --- Transition to Phase 4: Free-Style Metric Row (sDialsEnd -> sRangefinderPin) ---
+  // Elevate camera target and world pivot so 3D camera sits comfortably in upper half of screen
   .to(anim, {
     explode: 0.0,
     modelScale: 0.88,
@@ -1017,22 +1018,28 @@ function setupTimelineAndTriggers() {
     pivotY: overallModelCenter.y,
     pivotZ: overallModelCenter.z,
     worldPivotX: 0.0,
-    worldPivotY: 0.08,
+    worldPivotY: 0.18, // Elevated so model sits comfortably in upper half of viewport
     worldPivotZ: 0.0,
     camX: -0.22,
-    camY: 0.55, // Elevated view
+    camY: 0.68,        // Elevated view
     camZ: 1.65,
     lookX: 0.0,
-    lookY: 0.08,
+    lookY: 0.18,       // Elevated look target
     lookZ: 0.0,
     modelRotX: 0.12,
     modelRotY: -0.25,
+    opBayonet: 1.0,
+    opFrontMisc: 1.0,
+    opChassis: 1.0,
+    opSensor: 1.0,
+    opDials: 1.0,
+    opBaseplate: 1.0,
     duration: durRangefinderTrans,
     ease: 'power2.inOut',
   })
 
   // --- Phase 4: Free-Style Kinetic Metric Row Dwell (sRangefinderPin -> sRangefinderEnd) ---
-  // 3D camera glides across/over the 3 massive metrics (60 MP / ±0.02 mm / ISO 64) in foreground
+  // 3D camera glides across upper half while 3 massive metrics sit in lower screen
   .to(anim, {
     camX: 0.22,
     modelRotY: 0.30,
@@ -1070,29 +1077,16 @@ function setupTimelineAndTriggers() {
   })
 
   // --- Phase 6: Outro Showcase (sAssembledEnd -> sOutroEnd) ---
-  // Model transitions into CAD Wireframe backdrop (opacity 0.12) rotating 360° behind bold typography
+  // Fully sacrifice model: smoothly fade out (overallOpacity -> 0) and glide up out of view
   .to(anim, {
-    modelScale: 0.95,
-    pivotX: overallModelCenter.x,
-    pivotY: overallModelCenter.y,
-    pivotZ: overallModelCenter.z,
-    worldPivotX: 0.0,
-    worldPivotY: 0.10,
-    worldPivotZ: 0.0,
-    camX: 0.0,
-    camY: 0.50,
-    camZ: 1.70,
-    lookX: 0.0,
-    lookY: 0.05,
-    lookZ: 0.0,
-    modelRotX: 0.06,
-    duration: durOutro * 0.25,
-    ease: 'power2.inOut',
+    overallOpacity: 0.0,
+    worldPivotY: 0.60, // Smooth upward glide into empty air
+    camY: 0.40,
+    duration: durOutro * 0.4,
+    ease: 'power2.out',
   })
   .to(anim, {
-    modelRotY: 0.35 + Math.PI * 2.0, // 360° turntable rotation
-    orbitalOpacity: 1.0,
-    duration: durOutro * 0.75,
+    duration: durOutro * 0.6,
     ease: 'none',
   });
 }
@@ -1102,21 +1096,36 @@ setupTimelineAndTriggers();
 /* ==========================================================================
    INTERACTIVE EVENTS & BUTTON ACTIONS
    ========================================================================== */
+// Auto-resume / initialize audio on first user gesture
+const initAudioOnGesture = () => {
+  audio.init();
+  window.removeEventListener('wheel', initAudioOnGesture);
+  window.removeEventListener('pointerdown', initAudioOnGesture);
+  window.removeEventListener('scroll', initAudioOnGesture);
+  window.removeEventListener('keydown', initAudioOnGesture);
+};
+window.addEventListener('wheel', initAudioOnGesture, { passive: true });
+window.addEventListener('pointerdown', initAudioOnGesture, { passive: true });
+window.addEventListener('scroll', initAudioOnGesture, { passive: true });
+window.addEventListener('keydown', initAudioOnGesture, { passive: true });
+
 window.addEventListener('pointermove', (e) => {
   state.mouse.targetX = (e.clientX / window.innerWidth) * 2 - 1;
   state.mouse.targetY = -(e.clientY / window.innerHeight) * 2 + 1;
 });
 
-// Replay Button
+// Replay Button (Trigger Leica shutter release and scroll to top)
 if (btnReplay) {
   btnReplay.addEventListener('click', () => {
+    audio.playShutter();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 }
 
-// Finish Switcher
+// Finish Switcher (Trigger mechanical dial click)
 if (btnToggleFinish) {
   btnToggleFinish.addEventListener('click', () => {
+    audio.playTick(1.2);
     if (state.finish === 'black') {
       state.finish = 'silver';
       if (btnFinishLabel) btnFinishLabel.textContent = 'Finish: Classic Silver';
@@ -1195,39 +1204,71 @@ function render() {
     modelRoot.position.copy(worldTarget).sub(rotatedPivot);
     modelRoot.updateMatrixWorld(true);
 
-    // 7. Component Coaxial Pure-Z Explosion Geometry (Always synced, zero GC churn)
-    moduleExplodeVectors.forEach((modVec, mesh) => {
-      const orig = originalTransforms.get(mesh);
-      const micro = microExplodeVectors.get(mesh);
-      if (!orig) return;
+    // 7. Component Visibility, Dynamic Opacity & Coaxial Pure-Z Explosion Geometry
+    const masterOp = anim.overallOpacity;
+    if (masterOp <= 0.001) {
+      modelRoot.visible = false;
+    } else {
+      modelRoot.visible = true;
+      moduleExplodeVectors.forEach((modVec, mesh) => {
+        const orig = originalTransforms.get(mesh);
+        const micro = microExplodeVectors.get(mesh);
+        if (!orig) return;
 
-      const macroZ = modVec.z * anim.explode;
-      tempTargetPos.copy(orig.position);
-      tempTargetPos.z += macroZ;
-
-      let microX = 0, microY = 0, microZ = 0;
-      if (micro) {
+        let baseOp = 1.0;
         if (subAssemblySets.BAYONET.has(mesh)) {
-          microX = micro.x * anim.subExplode1;
-          microY = micro.y * anim.subExplode1;
-          microZ = micro.z * anim.subExplode1;
+          baseOp = anim.opBayonet;
+        } else if (subAssemblySets.FRONT_MISC.has(mesh)) {
+          baseOp = anim.opFrontMisc;
+        } else if (subAssemblySets.CHASSIS.has(mesh)) {
+          baseOp = anim.opChassis;
         } else if (subAssemblySets.SENSOR.has(mesh)) {
-          microX = micro.x * anim.subExplode2;
-          microY = micro.y * anim.subExplode2;
-          microZ = micro.z * anim.subExplode2;
+          baseOp = anim.opSensor;
         } else if (subAssemblySets.DIALS.has(mesh)) {
-          microX = micro.x * anim.subExplode3;
-          microY = micro.y * anim.subExplode3;
-          microZ = micro.z * anim.subExplode3;
+          baseOp = anim.opDials;
+        } else if (subAssemblySets.BASEPLATE.has(mesh)) {
+          baseOp = anim.opBaseplate;
         }
-      }
 
-      tempTargetPos.x += microX;
-      tempTargetPos.y += microY;
-      tempTargetPos.z += microZ;
+        const finalOp = Math.max(0, Math.min(1, baseOp * masterOp));
+        if (finalOp <= 0.005) {
+          mesh.visible = false;
+        } else {
+          mesh.visible = true;
+          if (mesh.material && mesh.material.opacity !== undefined) {
+            mesh.material.opacity = finalOp;
+            mesh.material.depthWrite = (finalOp > 0.95);
+          }
+        }
 
-      mesh.position.lerp(tempTargetPos, 0.15);
-    });
+        const macroZ = modVec.z * anim.explode;
+        tempTargetPos.copy(orig.position);
+        tempTargetPos.z += macroZ;
+
+        let microX = 0, microY = 0, microZ = 0;
+        if (micro) {
+          if (subAssemblySets.BAYONET.has(mesh)) {
+            microX = micro.x * anim.subExplode1;
+            microY = micro.y * anim.subExplode1;
+            microZ = micro.z * anim.subExplode1;
+          } else if (subAssemblySets.SENSOR.has(mesh)) {
+            microX = micro.x * anim.subExplode2;
+            microY = micro.y * anim.subExplode2;
+            microZ = micro.z * anim.subExplode2;
+          } else if (subAssemblySets.DIALS.has(mesh)) {
+            microX = micro.x * anim.subExplode3;
+            microY = micro.y * anim.subExplode3;
+            microZ = micro.z * anim.subExplode3;
+          }
+        }
+
+        tempTargetPos.x += microX;
+        tempTargetPos.y += microY;
+        tempTargetPos.z += microZ;
+
+        mesh.position.lerp(tempTargetPos, 0.15);
+      });
+    }
 
     // 8. Update Projections
     updateLeaderLine();

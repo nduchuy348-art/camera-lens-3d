@@ -494,9 +494,9 @@ body {
   position: relative;
   z-index: 1; /* z-index: 1 so canvas (z-index: 2) glides on top! */
   display: flex;
-  align-items: center;
+  align-items: flex-end; /* Moved to lower portion of screen */
   justify-content: center;
-  padding: 0 clamp(1.5rem, 4vw, 5rem);
+  padding: 0 clamp(1.5rem, 4vw, 5rem) 10vh; /* 10vh bottom padding */
   pointer-events: none;
 }
 
@@ -639,26 +639,26 @@ body {
 }
 
 /* ==========================================================================
-   PHASE 6: OUTRO SHOWCASE (CAD Wireframe Backdrop Rotating 360°)
+   PHASE 6: OUTRO SHOWCASE (Centered Brand Typography & Pure Photography)
    ========================================================================== */
 .outro-section {
-  min-height: 130vh;
+  min-height: 120vh;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0 clamp(1.5rem, 4vw, 4rem);
   text-align: center;
-  z-index: 5;
+  z-index: 10;
 }
 
 .outro-center-content {
   position: relative;
-  z-index: 10;
+  z-index: 20;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.25rem;
+  gap: 1.5rem;
   max-width: 680px;
   width: 100%;
   pointer-events: auto;
@@ -769,6 +769,10 @@ body {
     max-width: 100%;
     margin-left: 0;
     margin-right: 0;
+  }
+  .freestyle-section {
+    align-items: flex-end;
+    padding-bottom: 8vh;
   }
   .freestyle-metrics-container {
     flex-direction: column;
