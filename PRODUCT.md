@@ -44,9 +44,9 @@ Instead of flying through chaotic pieces, components form 3 isolated sub-assembl
   - *Seamless Unity*: Bayonet mount flange and magnesium chassis bọc da pebble appear directly together as a unified assembly (`opBayonet: 1.0`, `opChassis: 1.0`), showcasing the dark sensor chamber through the throat of the mount with zero detached optical glass.
   - *Zero Glass Detachment*: Optical window elements are solidly locked into their bezels with zero Z-axis micro-explosion (`micro = 0, 0, 0` and `subExplode2: 0.0`).
 
-* **Sub-Assembly 3: Tactile Mechanical Controls & Silhouette Pedestal (Chapter 3)**:
-  - *Cohesive Matte Pedestal*: Entire camera frame (top plate, central chassis with pebble leatherette, and baseplate closing the camera bottom at 48°) transitions to a solid frosted/matte translucent pedestal (`opChassis: 0.48`, `opBaseplate: 0.48`).
-  - *Hero Dials*: Knurled dials (`Shutter Speed Dial`, `ISO Dial`, thumb wheels) 100% solid, sharp, opaque, and specular in front (`opDials: 1.0`), hovering slightly before snapping flush.
+* **Sub-Assembly 3: Tactile Mechanical Controls & Solid Frame (Chapter 3)**:
+  - *Solid Leica M11 Architecture*: Entire camera frame (black anodized top plate, central magnesium chassis wrapped in pebble leatherette, bottom plate closing the camera base at 48°, front optical windows & badge, and stainless steel bayonet flange) renders 100% solid, fully tangible and physical (`opacity: 1.0`, `depthWrite: true`, `opChassis: 1.0`, `opBaseplate: 1.0`, `opBayonet: 1.0`, `opFrontMisc: 1.0`, `opDials: 1.0`).
+  - *Hero Dials*: Knurled dials (`Shutter Speed Dial`, `ISO Dial`, thumb wheels) hover cleanly above the solid top plate before snapping flush into place (`subExplode3: 0.50 -> 0.0`), catching knurled diamond grooves and engraved numbers with pristine specular reflections.
 
 * **Phase 4: Technical Specs & Anchored Metric Floor (60MP, ±0.02mm, ISO 64)**:
   - Full camera 100% assembled, elevated to the upper half of the viewport (`worldPivotY: 0.38`, `camY: 0.72`, `lookY: 0.10`, `modelScale: 0.85`).
