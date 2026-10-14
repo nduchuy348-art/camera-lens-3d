@@ -5,8 +5,10 @@
 class MechanicalAudioEngine {
   constructor() {
     this.ctx = null;
+    this.masterGain = null;
     this.isMuted = false;
     this.lastTickTime = 0;
+    this.lastRatchetTime = 0;
   }
 
   // Initialize or resume the Web Audio context on user gesture
@@ -15,11 +17,20 @@ class MechanicalAudioEngine {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 1, this.ctx.currentTime);
+        this.masterGain.connect(this.ctx.destination);
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      return this.ctx.resume().catch(() => {});
     }
+    return Promise.resolve();
+  }
+
+  // Get current audio destination (Master Gain or AudioContext destination)
+  get destination() {
+    return this.masterGain || (this.ctx ? this.ctx.destination : null);
   }
 
   // Subtle mechanical dial click triggered on scroll detents (ball-bearing detents)
@@ -30,7 +41,7 @@ class MechanicalAudioEngine {
     this.lastTickTime = now;
 
     this.init();
-    if (!this.ctx) return;
+    if (!this.ctx || !this.destination) return;
 
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
@@ -50,7 +61,7 @@ class MechanicalAudioEngine {
 
     osc.connect(filter);
     filter.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.destination);
 
     osc.onended = () => {
       try {
@@ -68,7 +79,7 @@ class MechanicalAudioEngine {
   playSnap() {
     if (this.isMuted) return;
     this.init();
-    if (!this.ctx) return;
+    if (!this.ctx || !this.destination) return;
 
     const t = this.ctx.currentTime;
 
@@ -83,7 +94,7 @@ class MechanicalAudioEngine {
     gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
 
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.destination);
 
     osc.onended = () => {
       try {
@@ -101,10 +112,11 @@ class MechanicalAudioEngine {
     osc2.type = 'square';
     osc2.frequency.setValueAtTime(1600, t + 0.012);
     osc2.frequency.exponentialRampToValueAtTime(250, t + 0.035);
+    g2.gain.setValueAtTime(0, t);
     g2.gain.setValueAtTime(0.05, t + 0.012);
     g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
     osc2.connect(g2);
-    g2.connect(this.ctx.destination);
+    g2.connect(this.destination);
     osc2.onended = () => {
       try {
         osc2.disconnect();
@@ -123,7 +135,7 @@ class MechanicalAudioEngine {
     resGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
 
     resOsc.connect(resGain);
-    resGain.connect(this.ctx.destination);
+    resGain.connect(this.destination);
 
     resOsc.onended = () => {
       try {
@@ -140,7 +152,7 @@ class MechanicalAudioEngine {
   playShutter() {
     if (this.isMuted) return;
     this.init();
-    if (!this.ctx) return;
+    if (!this.ctx || !this.destination) return;
 
     const t = this.ctx.currentTime;
 
@@ -153,7 +165,7 @@ class MechanicalAudioEngine {
     g1.gain.setValueAtTime(0.06, t);
     g1.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
     osc1.connect(g1);
-    g1.connect(this.ctx.destination);
+    g1.connect(this.destination);
 
     osc1.onended = () => {
       try {
@@ -179,11 +191,12 @@ class MechanicalAudioEngine {
     noiseFilter.frequency.value = 1600;
     noiseFilter.Q.value = 2.0;
     const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0, t);
     noiseGain.gain.setValueAtTime(0.045, t + 0.01);
     noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
     whiteNoise.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
-    noiseGain.connect(this.ctx.destination);
+    noiseGain.connect(this.destination);
 
     whiteNoise.onended = () => {
       try {
@@ -202,10 +215,11 @@ class MechanicalAudioEngine {
     osc2.type = 'triangle';
     osc2.frequency.setValueAtTime(1400, t + 0.042);
     osc2.frequency.exponentialRampToValueAtTime(280, t + 0.075);
+    g2.gain.setValueAtTime(0, t);
     g2.gain.setValueAtTime(0.08, t + 0.042);
     g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
     osc2.connect(g2);
-    g2.connect(this.ctx.destination);
+    g2.connect(this.destination);
 
     osc2.onended = () => {
       try {
@@ -222,7 +236,7 @@ class MechanicalAudioEngine {
   playMountLock() {
     if (this.isMuted) return;
     this.init();
-    if (!this.ctx) return;
+    if (!this.ctx || !this.destination) return;
 
     const t = this.ctx.currentTime;
 
@@ -245,7 +259,7 @@ class MechanicalAudioEngine {
     frictionGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
     frictionNoise.connect(filter);
     filter.connect(frictionGain);
-    frictionGain.connect(this.ctx.destination);
+    frictionGain.connect(this.destination);
     frictionNoise.onended = () => {
       try {
         frictionNoise.disconnect();
@@ -262,10 +276,11 @@ class MechanicalAudioEngine {
     lockOsc.type = 'triangle';
     lockOsc.frequency.setValueAtTime(650, t + 0.04);
     lockOsc.frequency.exponentialRampToValueAtTime(120, t + 0.085);
+    lockGain.gain.setValueAtTime(0, t);
     lockGain.gain.setValueAtTime(0.09, t + 0.04);
     lockGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
     lockOsc.connect(lockGain);
-    lockGain.connect(this.ctx.destination);
+    lockGain.connect(this.destination);
     lockOsc.onended = () => {
       try {
         lockOsc.disconnect();
@@ -281,10 +296,11 @@ class MechanicalAudioEngine {
     snapOsc.type = 'square';
     snapOsc.frequency.setValueAtTime(2400, t + 0.044);
     snapOsc.frequency.exponentialRampToValueAtTime(400, t + 0.075);
+    snapGain.gain.setValueAtTime(0, t);
     snapGain.gain.setValueAtTime(0.07, t + 0.044);
     snapGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
     snapOsc.connect(snapGain);
-    snapGain.connect(this.ctx.destination);
+    snapGain.connect(this.destination);
     snapOsc.onended = () => {
       try {
         snapOsc.disconnect();
@@ -299,10 +315,11 @@ class MechanicalAudioEngine {
     const ringGain = this.ctx.createGain();
     flangeRing.type = 'sine';
     flangeRing.frequency.setValueAtTime(2850, t + 0.045);
+    ringGain.gain.setValueAtTime(0, t);
     ringGain.gain.setValueAtTime(0.022, t + 0.045);
     ringGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
     flangeRing.connect(ringGain);
-    ringGain.connect(this.ctx.destination);
+    ringGain.connect(this.destination);
     flangeRing.onended = () => {
       try {
         flangeRing.disconnect();
@@ -316,8 +333,12 @@ class MechanicalAudioEngine {
   // Delicate mechanical winding gear ratchet clicks (watchmaker gear pawl)
   playRatchet(pitch = 1.0) {
     if (this.isMuted) return;
+    const now = performance.now();
+    if (now - this.lastRatchetTime < 40) return; // Prevent audio pile-up on rapid scroll
+    this.lastRatchetTime = now;
+
     this.init();
-    if (!this.ctx) return;
+    if (!this.ctx || !this.destination) return;
 
     const t = this.ctx.currentTime;
 
@@ -336,12 +357,13 @@ class MechanicalAudioEngine {
       filter.type = 'highpass';
       filter.frequency.setValueAtTime(2200, clickTime);
 
+      gain.gain.setValueAtTime(0, t);
       gain.gain.setValueAtTime(0.038, clickTime);
       gain.gain.exponentialRampToValueAtTime(0.0001, clickTime + 0.012);
 
       osc.connect(filter);
       filter.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.destination);
 
       osc.onended = () => {
         try {
@@ -359,7 +381,7 @@ class MechanicalAudioEngine {
   playApertureClick(pitch = 1.0) {
     if (this.isMuted) return;
     this.init();
-    if (!this.ctx) return;
+    if (!this.ctx || !this.destination) return;
 
     const t = this.ctx.currentTime;
     const osc1 = this.ctx.createOscillator();
@@ -385,7 +407,7 @@ class MechanicalAudioEngine {
     osc1.connect(filter);
     osc2.connect(filter);
     filter.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.destination);
 
     osc1.onended = () => {
       try {
@@ -405,11 +427,17 @@ class MechanicalAudioEngine {
   // Toggle mute state
   toggleMute() {
     this.isMuted = !this.isMuted;
+    if (this.masterGain && this.ctx) {
+      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 1, this.ctx.currentTime);
+    }
     return this.isMuted;
   }
 
   setMuted(muted) {
     this.isMuted = !!muted;
+    if (this.masterGain && this.ctx) {
+      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 1, this.ctx.currentTime);
+    }
     return this.isMuted;
   }
 }

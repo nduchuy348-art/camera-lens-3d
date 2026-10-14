@@ -963,5 +963,13 @@ body {
   .brand-edition {
     display: none;
   }
+  .sound-toggle-btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.5rem 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 

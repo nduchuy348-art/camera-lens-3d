@@ -754,19 +754,35 @@ function setupTimelineAndTriggers() {
   const durAssembledPin = sAssembledEnd - sAssembledPin;
   const durOutro = Math.max(1, sOutroEnd - sAssembledEnd);
 
-  function syncScrollState(scrollY) {
+  let lastScrollY = 0;
+  let lastScrollTime = performance.now();
+
+  function syncScrollState(scrollY, velocity) {
+    const now = performance.now();
+    const dt = Math.max(1, now - lastScrollTime);
+    const speed = (velocity !== undefined && velocity !== null && !isNaN(velocity))
+      ? Math.abs(velocity)
+      : (Math.abs(scrollY - lastScrollY) / dt) * 1000; // in px/sec
+    lastScrollY = scrollY;
+    lastScrollTime = now;
+
+    // Normalize speed (0 to ~3500 px/sec) -> speedMultiplier (0.95 to 1.35)
+    const speedMultiplier = Math.min(1.35, Math.max(0.95, 0.95 + (speed / 3500) * 0.40));
+
     // 1. Mechanical Dial Detent Audio Click & Chapter 3 Winding Ratchet on Scroll
     const currentDetent = Math.floor(scrollY / 45);
     if (currentDetent !== state.lastDetent) {
       if (state.lastDetent !== null) {
         if (scrollY >= sDialsPin - 50 && scrollY <= sDialsEnd + 50) {
           // Chapter 3 Tactile Command: delicate mechanical winding gear ratchet clicks!
-          audio.playRatchet();
+          audio.playRatchet(speedMultiplier);
           if (shutterDialMesh) {
             shutterDialMesh.rotation.y += (currentDetent > state.lastDetent ? 0.12 : -0.12);
           }
         } else {
-          audio.playTick(1.0 + ((Math.abs(currentDetent) % 5) * 0.05));
+          const detentVariation = 1.0 + ((Math.abs(currentDetent) % 5) * 0.04);
+          const finalPitch = speedMultiplier * detentVariation;
+          audio.playTick(finalPitch);
         }
       }
       state.lastDetent = currentDetent;
@@ -778,7 +794,7 @@ function setupTimelineAndTriggers() {
         audio.playMountLock();
         state.mountLocked = true;
       }
-    } else if (scrollY < sBayonetPin - 60) {
+    } else if (scrollY < sBayonetEnd - 80) {
       state.mountLocked = false;
     }
 
@@ -883,9 +899,10 @@ function setupTimelineAndTriggers() {
       end: 'bottom bottom',
       scrub: 1.0,
       refreshPriority: 0,
-      onUpdate: () => {
+      onUpdate: (self) => {
         const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-        syncScrollState(scrollY);
+        const velocity = self && typeof self.getVelocity === 'function' ? self.getVelocity() : null;
+        syncScrollState(scrollY, velocity);
       },
     },
   });
@@ -1149,15 +1166,25 @@ setupTimelineAndTriggers();
    ========================================================================== */
 // Auto-resume / initialize audio on first user gesture and fire welcome Leica shutter click
 const unlockAudioOnGesture = () => {
-  audio.init();
-  if (!state.welcomed) {
-    state.welcomed = true;
-    audio.playShutter(); // Authentic welcome shutter click on first interaction!
+  const resumePromise = audio.init();
+  const checkUnlocked = () => {
+    if (audio.ctx && audio.ctx.state === 'running') {
+      if (!state.welcomed) {
+        state.welcomed = true;
+        audio.playShutter(); // Authentic welcome shutter click on first interaction!
+      }
+      const gestures = ['wheel', 'scroll', 'pointerdown', 'touchstart', 'click', 'keydown'];
+      gestures.forEach((evt) => {
+        window.removeEventListener(evt, unlockAudioOnGesture);
+      });
+    }
+  };
+
+  if (resumePromise && typeof resumePromise.then === 'function') {
+    resumePromise.then(checkUnlocked);
+  } else {
+    checkUnlocked();
   }
-  const gestures = ['wheel', 'scroll', 'pointerdown', 'touchstart', 'click', 'keydown'];
-  gestures.forEach((evt) => {
-    window.removeEventListener(evt, unlockAudioOnGesture);
-  });
 };
 ['wheel', 'scroll', 'pointerdown', 'touchstart', 'click', 'keydown'].forEach((evt) => {
   window.addEventListener(evt, unlockAudioOnGesture, { passive: true });
@@ -1244,7 +1271,8 @@ if (hotspotBadge) {
 // Chapter 3 Spec Chips Interactive Dials Simulation
 document.querySelectorAll('.interactive-chip[data-action="ratchet"]').forEach((chip) => {
   chip.addEventListener('click', () => {
-    audio.playRatchet();
+    const pitch = parseFloat(chip.getAttribute('data-pitch')) || 1.0;
+    audio.playRatchet(pitch);
     if (shutterDialMesh) {
       gsap.to(shutterDialMesh.rotation, {
         y: shutterDialMesh.rotation.y + Math.PI / 6,
