@@ -382,11 +382,7 @@ function classifyAndAssignVectors(mesh) {
   else {
     subAssemblySets.SENSOR.add(mesh);
     moduleExplodeVectors.set(mesh, new THREE.Vector3(0, 0, 0.0));
-    const micro = new THREE.Vector3(0, 0, 0);
-    if (name.includes('glass')) {
-      micro.set(0, 0, 0.16);
-    }
-    microExplodeVectors.set(mesh, micro);
+    microExplodeVectors.set(mesh, new THREE.Vector3(0, 0, 0));
   }
 
   if (name.includes('shutter speed dial') || name === 'shutter speed dial') {
@@ -440,7 +436,7 @@ loader.load(
     scene.add(modelRoot);
     state.isLoaded = true;
 
-    updateChapterMaterialsAndVisibility();
+    updateFinishMaterials();
     setupTimelineAndTriggers();
 
     // Smooth curtain reveal wipe
@@ -914,11 +910,11 @@ function setupTimelineAndTriggers() {
   })
 
   // --- Transition from Bayonet to Chapter 2 Sensor (sBayonetEnd -> sSensorPin) ---
-  // Smoothly fade in central body chassis (Body Middle) and Sensor core
+  // Smoothly fade in central body chassis while keeping bayonet mount assembly directly visible
   .to(anim, {
     subExplode1: 0.0,
     explode: 0.0, // Settle explode while other modules are invisible (zero jump)
-    opBayonet: 0.0,
+    opBayonet: 1.0, // Keep neat bayonet mount assembly visible together with chassis
     opChassis: 1.0, // Central body chassis smoothly fades in from transparent to solid
     opSensor: 1.0,  // 60MP sensor inside fades in
     pivotX: sensorCenter.x,
@@ -940,22 +936,23 @@ function setupTimelineAndTriggers() {
   })
 
   // --- Phase 2, Chapter 2: Sensor Core Pinned Dwell (sSensorPin -> sSensorEnd) ---
-  // Central magnesium chassis & 60MP sensor core
+  // Central magnesium chassis & 60MP sensor core solidly mounted with zero optical glass detachment
   .to(anim, {
-    subExplode2: 1.0,
+    subExplode2: 0.0, // Solidly mounted, zero detachment along Z
     modelRotY: 0.35, // Multi-angle sweep catching sensor optics
     duration: durSensorPin,
     ease: 'none',
   })
 
   // --- Transition from Sensor to Chapter 3 Dials (sSensorEnd -> sDialsPin) ---
-  // Body Middle chassis REMAINS visible as solid foundation; Body Top and knurled dials fade in!
+  // Camera chassis remains subtly visible as faint translucent silhouette pedestal (0.22); dials fade in crisp & solid!
   .to(anim, {
     subExplode2: 0.0,
     modelScale: 1.0,
+    opBayonet: 0.0,
     opSensor: 0.0,
-    opChassis: 1.0, // Keep chassis continuously visible as solid foundation
-    opDials: 1.0,   // Body Top and Dials appear gradually
+    opChassis: 0.22, // Faint translucent silhouette pedestal (0.20 - 0.25)
+    opDials: 1.0,   // Knurled dials prominent, 100% sharp and solid
     pivotX: shutterDialCenter.x,
     pivotY: shutterDialCenter.y,
     pivotZ: shutterDialCenter.z,
@@ -975,36 +972,36 @@ function setupTimelineAndTriggers() {
   })
 
   // --- Phase 2, Chapter 3: Tactile Controls Pinned Dwell (sDialsPin -> sDialsEnd) ---
-  // Solid Body Top mounted on Body Middle chassis, knurled dials prominent, zero floating dial
+  // Translucent body chassis silhouette pedestal, knurled dials prominent, zero floating dial
   .to(anim, {
-    subExplode3: 0.60,
+    subExplode3: 0.50,
     modelRotY: 0.20,
     duration: durDialsPin * 0.6,
     ease: 'none',
   })
   .to(anim, {
-    subExplode3: 0.0, // Dials snap flush
+    subExplode3: 0.0, // Dials snap flush onto top plate
     modelRotY: 0.25,
     duration: durDialsPin * 0.4,
     ease: 'power2.out',
   })
 
   // --- Transition to Phase 4: Free-Style Metric Row (sDialsEnd -> sRangefinderPin) ---
-  // Elevate camera target and world pivot so 3D camera sits comfortably in upper half of screen
+  // Elevate camera target and world pivot so 3D camera sits comfortably in upper 50-55% of viewport
   .to(anim, {
     explode: 0.0,
-    modelScale: 0.88,
+    modelScale: 0.85,
     pivotX: overallModelCenter.x,
     pivotY: overallModelCenter.y,
     pivotZ: overallModelCenter.z,
     worldPivotX: 0.0,
-    worldPivotY: 0.18, // Elevated so model sits comfortably in upper half of viewport
+    worldPivotY: 0.38, // Elevated so model sits comfortably in upper half of viewport (top 50-55%)
     worldPivotZ: 0.0,
     camX: -0.22,
-    camY: 0.68,        // Elevated view
+    camY: 0.72,        // Elevated view
     camZ: 1.65,
     lookX: 0.0,
-    lookY: 0.18,       // Elevated look target
+    lookY: 0.10,       // Angled down slightly to leave bottom 45% clear for metrics
     lookZ: 0.0,
     modelRotX: 0.12,
     modelRotY: -0.25,
@@ -1019,7 +1016,7 @@ function setupTimelineAndTriggers() {
   })
 
   // --- Phase 4: Free-Style Kinetic Metric Row Dwell (sRangefinderPin -> sRangefinderEnd) ---
-  // 3D camera glides across upper half while 3 massive metrics sit in lower screen
+  // 3D camera glides across upper half while 3 massive metrics sit anchored in lower screen
   .to(anim, {
     camX: 0.22,
     modelRotY: 0.30,
@@ -1057,16 +1054,17 @@ function setupTimelineAndTriggers() {
   })
 
   // --- Phase 6: Outro Showcase (sAssembledEnd -> sOutroEnd) ---
-  // Fully sacrifice model: smoothly fade out (overallOpacity -> 0) and glide up out of view
+  // Fully sacrifice model: rotational revolution (~1.5 turn) + upward glide + smooth fade out into pure white canvas
   .to(anim, {
     overallOpacity: 0.0,
-    worldPivotY: 0.60, // Smooth upward glide into empty air
-    camY: 0.40,
-    duration: durOutro * 0.4,
+    modelRotY: 0.35 + (1.5 * Math.PI), // Majestic ~1.5 revolution turn as it ascends
+    worldPivotY: 0.55,                 // Smooth upward glide into empty air
+    camY: 0.45,
+    duration: durOutro * 0.55,
     ease: 'power2.out',
   })
   .to(anim, {
-    duration: durOutro * 0.6,
+    duration: durOutro * 0.45,
     ease: 'none',
   });
 }
@@ -1207,7 +1205,14 @@ function render() {
         } else if (subAssemblySets.SENSOR.has(mesh)) {
           baseOp = anim.opSensor;
         } else if (subAssemblySets.DIALS.has(mesh)) {
-          baseOp = anim.opDials;
+          // In Chapter 3 (Tactile Command), Body Top and accessories act as the translucent silhouette pedestal
+          // while hero knurled dials remain 100% solid and prominent
+          const meshName = (mesh.name || '').toLowerCase();
+          if ((state.activeSubAssembly === 'DIALS' || anim.opChassis <= 0.35) && (meshName.includes('body top') || meshName.includes('accessory shoe'))) {
+            baseOp = anim.opChassis; // Faint silhouette pedestal (~0.22)
+          } else {
+            baseOp = anim.opDials;   // 1.0 for dials
+          }
         } else if (subAssemblySets.BASEPLATE.has(mesh)) {
           baseOp = anim.opBaseplate;
         }

@@ -493,10 +493,12 @@ body {
   height: 100vh;
   position: relative;
   z-index: 1; /* z-index: 1 so canvas (z-index: 2) glides on top! */
-  display: flex;
-  align-items: flex-end; /* Moved to lower portion of screen */
-  justify-content: center;
-  padding: 0 clamp(1.5rem, 4vw, 5rem) 10vh; /* 10vh bottom padding */
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  padding: 0 clamp(1.5rem, 4vw, 5rem) 8vh !important;
+  padding-bottom: 8vh !important;
   pointer-events: none;
 }
 
@@ -771,8 +773,11 @@ body {
     margin-right: 0;
   }
   .freestyle-section {
-    align-items: flex-end;
-    padding-bottom: 8vh;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    padding-bottom: 8vh !important;
   }
   .freestyle-metrics-container {
     flex-direction: column;
