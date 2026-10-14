@@ -306,7 +306,7 @@ function classifyAndAssignVectors(mesh) {
   } else if (name.includes('mesh.052') || name.includes('body middle')) {
     leatheretteMesh = mesh;
     mesh.material = matLeatherette;
-  } else if (name.includes('glass') || name.includes('eyepiece') || name.includes('sensor') || name.includes('viewfinder')) {
+  } else if (name.includes('glass') || name.includes('eyepiece') || name.includes('sensor') || name.includes('viewfinder') || name.includes('finder') || name.includes('window')) {
     mesh.material = matOpticalGlass.clone();
   } else if (name === 'bayonet.005' || name === 'bayonet') {
     mesh.material = matBayonetFlange.clone();
@@ -338,7 +338,11 @@ function classifyAndAssignVectors(mesh) {
     name.includes('selector') ||
     name.includes('badge') ||
     name.includes('finder window') ||
-    name.includes('brightness sensor')
+    name.includes('brightness sensor') ||
+    name === 'glass' ||
+    name === 'glass.001' ||
+    name === 'glass.005' ||
+    name === 'glass.006'
   ) {
     subAssemblySets.FRONT_MISC.add(mesh);
     moduleExplodeVectors.set(mesh, new THREE.Vector3(0, 0, 1.45));
@@ -366,7 +370,10 @@ function classifyAndAssignVectors(mesh) {
     name.includes('body bottom') ||
     name.includes('battery') ||
     name.includes('lcd') ||
-    name.includes('eyepiece')
+    name.includes('eyepiece') ||
+    name === 'glass.002' ||
+    name === 'glass.003' ||
+    name === 'glass.004'
   ) {
     subAssemblySets.BASEPLATE.add(mesh);
     moduleExplodeVectors.set(mesh, new THREE.Vector3(0, 0, -1.40));
@@ -1205,11 +1212,11 @@ function render() {
         } else if (subAssemblySets.SENSOR.has(mesh)) {
           baseOp = anim.opSensor;
         } else if (subAssemblySets.DIALS.has(mesh)) {
-          // In Chapter 3 (Tactile Command), Body Top and accessories act as the translucent silhouette pedestal
-          // while hero knurled dials remain 100% solid and prominent
+          // In Chapter 3 (Tactile Command), Body Top and accessories act as the translucent silhouette pedestal (~0.22)
+          // and smoothly interpolate without threshold popping or opacity jumping
           const meshName = (mesh.name || '').toLowerCase();
-          if ((state.activeSubAssembly === 'DIALS' || anim.opChassis <= 0.35) && (meshName.includes('body top') || meshName.includes('accessory shoe'))) {
-            baseOp = anim.opChassis; // Faint silhouette pedestal (~0.22)
+          if (meshName.includes('body top') || meshName.includes('accessory shoe')) {
+            baseOp = Math.min(anim.opDials, anim.opChassis);
           } else {
             baseOp = anim.opDials;   // 1.0 for dials
           }

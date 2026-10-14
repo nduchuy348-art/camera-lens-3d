@@ -39,18 +39,18 @@
 3. **Sub-Assembly Isolation & Pinned Inspection**:
    - Pinned dwell with smooth turntable sweeps.
    - Outgoing sub-assemblies fade out (`duration: 0.35s`); incoming sub-assemblies fade in centered at `(0, 0, 0)` early (triggered at `top 80%`).
-   - Chapter 1 Bayonet Mount: ONLY shining 4-claw stainless steel flange (`Bayonet.005`) centered at `(0, 0, 0)`, lens cap and selector hidden.
-   - Chapter 2 Sensor Core: framed at `camZ: 0.70m`, text card aligned safely (`max-width: min(440px, 36vw)`, `margin-right: 2.5rem`, `word-break: break-word`).
-   - Chapter 3 Tactile Command: ONLY single hero `Shutter Speed Dial` centered at `(0, 0, 0)` (52° pitch) rotating around its own knurled axis; text card cleanly aligned on the left grid (`margin-left: 0`, `max-width: min(440px, 36vw)`).
+   - Chapter 1 Bayonet Mount: 4-claw stainless steel flange (`Bayonet.005`) and lens cap centered at `(0, 0, 0)`.
+   - Chapter 2 Sensor Core: Seamless transition keeping bayonet mount flange firmly seated on chassis (`opBayonet: 1.0`, `opChassis: 1.0`), showcasing dark sensor chamber with zero glass detachment.
+   - Chapter 3 Tactile Command: Translucent silhouette pedestal (`opChassis: 0.22`, `depthWrite: false`) supporting prominent, razor-sharp knurled dials and switches (`opDials: 1.0`).
 
-4. **Climax Mechanical Snap (BEFORE Chapter 4)**:
-   - Single decisive impact snap at `progress >= 0.77` (`back.out(2.0)`), fusing all 66 components into a solid camera, accompanied by 100ms camera micro-shake and authentic shutter release audio.
+4. **Chapter 4 Technical Specs (60MP, ±0.02mm, ISO 64)**:
+   - Camera 100% assembled, elevated to upper half of viewport (`worldPivotY: 0.38`, `camY: 0.72`, `lookY: 0.10`, `modelScale: 0.85`), floating comfortably above bottom-anchored metrics with zero text collision.
 
-5. **Chapter 4 Technical Specs (60MP, ±0.02mm, ISO 64)**:
-   - Camera is ALREADY 100% assembled. Model dwells in center safe zone above stats cards, gently rotating left and right $\pm 12^\circ$ to showcase the camera.
+5. **Climax Mechanical Snap & Hotspots (Phase 5)**:
+   - Single decisive impact snap at `progress >= 0.77` (`back.out(2.0)`), fusing all components into unified camera with authentic shutter audio and interactive 3D hotspot annotations.
 
-6. **Vertical Stack Outro (180vh)**:
-   - Top 55% viewport dedicated to 3D model slow elegant turntable on Edolus ring, bottom 45% for Leica cursive emblem, title, slogan, finish switcher, and replay action. Zero floating hotspots.
+6. **Outro Rotational Fade-Out (Phase 6)**:
+   - Model smoothly executes ~1.5 revolution rotation (`modelRotY: 0.35 + 1.5 * Math.PI`) while ascending (`worldPivotY: 0.55`) and fading out (`overallOpacity: 1.0 -> 0.0`), leaving typography and action buttons centered on pure white canvas. Default finish: Stealth Black.
 
 ---
 

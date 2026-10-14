@@ -36,29 +36,27 @@ All 66 components disengage strictly along the optical Z-axis (the axis containi
 Instead of flying through chaotic pieces, components form 3 isolated sub-assemblies that assemble dynamically on scroll and can be inspected via turntable rotation:
 
 * **Sub-Assembly 1: Precision Stainless Steel Bayonet Mount (Chapter 1)**:
-  - *Isolation*: Non-active parts hidden (`visible = false`). ONLY the 4-claw stainless steel flange (`Bayonet.005`) is showcased at `(0, 0, 0)` in the center. Lens cap and frame selector lever are hidden.
-  - *Scroll Turntable*: User scrolling rotates the shining flange smoothly along its axis (`modelRotY: -0.22 \rightarrow +0.25`), catching specular reflections.
-  - *Exit*: Fades out smoothly into Chapter 2.
+  - *Isolation*: Stainless steel bayonet flange (`Bayonet.005`) and protective cap showcased. Cap slides forward along Z to expose the precision flange.
+  - *Exit*: Flange remains solidly seated (`opBayonet: 1.0`), seamlessly transitioning together with the chassis into Chapter 2 without popping or disappearance.
 
 * **Sub-Assembly 2: 60MP Full-Frame BSI Sensor Core (Chapter 2)**:
   - *Atmosphere*: High-Key Full White Gallery baseline (`#FDFDFD`, `#F6F7F8`).
-  - *Isolation*: Central magnesium chassis skeleton and 60MP BSI sensor core. Text block aligned safely with zero overflow (`word-break: break-word`, `margin-right: 2.5rem`).
-  - *Scroll Turntable*: Scrolling tilts and turns the sensor, catching sapphire and 24K gold glints.
+  - *Seamless Unity*: Bayonet mount flange and magnesium chassis bọc da pebble appear directly together as a unified assembly (`opBayonet: 1.0`, `opChassis: 1.0`), showcasing the dark sensor chamber through the throat of the mount with zero detached optical glass.
+  - *Zero Glass Detachment*: Optical window elements are solidly locked into their bezels with zero Z-axis micro-explosion (`micro = 0, 0, 0` and `subExplode2: 0.0`).
 
-* **Sub-Assembly 3: Tactile Mechanical Controls & Hero Shutter Dial (Chapter 3)**:
-  - *Isolation*: ONLY the single featured `Shutter Speed Dial` is showcased and centered at `(0, 0, 0)`. All other dials are hidden.
-  - *Layout Harmony*: Text block cleanly aligned on the left with safe margins, while the hero dial spins proudly around its own knurled axis at center.
+* **Sub-Assembly 3: Tactile Mechanical Controls & Silhouette Pedestal (Chapter 3)**:
+  - *Silhouette Pedestal*: Camera body and top deck subtly visible as a soft translucent foundation (`opChassis: 0.22`, `depthWrite: false`).
+  - *Hero Dials*: Knurled dials (`Shutter Speed Dial`, `ISO Dial`) and top switches 100% solid, sharp, and specular in front (`opDials: 1.0`), hovering slightly before snapping flush.
 
-* **Phase 3: Synthesis Climax Reassembly (BEFORE Chapter 4)**:
-  - Model snaps completely back together into a 100% assembled solid camera BEFORE Chapter 4.
-  - All 66 components slam together in ONE decisive impact snap at `progress >= 0.77` (`back.out(2.0)`), accompanied by 100ms camera micro-shake and authentic shutter release audio.
+* **Phase 4: Technical Specs & Anchored Metric Floor (60MP, ±0.02mm, ISO 64)**:
+  - Full camera 100% assembled, elevated to the upper half of the viewport (`worldPivotY: 0.38`, `camY: 0.72`, `lookY: 0.10`, `modelScale: 0.85`).
+  - Massive metrics anchored firmly in the bottom 12% of the screen (`justify-content: flex-end`, `padding-bottom: 8vh`) with zero text collision.
 
-* **Phase 3, Chapter 4: Technical Specs & Metric Floor (60MP, ±0.02mm, ISO 64)**:
-  - Full camera is ALREADY 100% assembled.
-  - Model dwells in the center safe zone above the stats cards, gently rotating left and right $\pm 12^\circ$ to showcase the camera.
+* **Phase 5: Synthesis Climax Reassembly & Hotspots**:
+  - Model snaps completely into unified camera with interactive 3D hotspot annotations (Rangefinder optics, dual mechanical shutter, Leica red dot).
 
-* **Phase 4: Outro Showcase (180vh)**:
-  - Extended 180vh section with slow, majestic turntable rotation in the top 55% viewport, and typography + actions in bottom 45%. Dual finish switcher (Stealth Black / Classic Silver) and replay tour.
+* **Phase 6: Outro Showcase (180vh)**:
+  - Fully sacrificed model: smooth ~1.5 revolution rotation (`modelRotY: 0.35 + 1.5 * Math.PI`) as the camera ascends (`worldPivotY: 0.55`) and fades out (`overallOpacity: 1.0 -> 0.0`), leaving typography and action buttons centered on pure white canvas. Default finish: Stealth Matte Black with Classic Silver Chrome toggle.
 
 ---
 
