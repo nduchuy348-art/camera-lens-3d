@@ -945,6 +945,7 @@ function setupTimelineAndTriggers() {
   // --- Phase 2, Chapter 2: Sensor Core Pinned Dwell (sSensorPin -> sSensorEnd) ---
   // Central magnesium chassis & 60MP sensor core solidly mounted with zero optical glass detachment
   .to(anim, {
+    explode: 0.0,
     subExplode2: 0.0, // Solidly mounted, zero detachment along Z
     modelRotY: 0.35, // Multi-angle sweep catching sensor optics
     duration: durSensorPin,
@@ -952,27 +953,30 @@ function setupTimelineAndTriggers() {
   })
 
   // --- Transition from Sensor to Chapter 3 Dials (sSensorEnd -> sDialsPin) ---
-  // Camera chassis, top plate & body frame 100% solid & fully visible (1.0); knurled dials hover cleanly then snap flush!
+  // Camera is 100% fully assembled and complete: all 66 components solid (1.0) and in place (explode: 0.0)
   .to(anim, {
+    explode: 0.0,
+    subExplode1: 0.0,
     subExplode2: 0.0,
-    subExplode3: 0.50, // Shutter dial lifts up cleanly above solid top deck
+    subExplode3: 0.0,
     modelScale: 1.0,
     opBayonet: 1.0,
     opFrontMisc: 1.0, // Front finder windows, badge & selector 100% solid
-    opSensor: 0.0,
     opChassis: 1.0,   // Central body chassis & leatherette wrap 100% solid
+    opSensor: 1.0,    // 60MP sensor core 100% solid, fully assembled, zero hollow cavity
+    opDials: 1.0,     // Top plate and knurled dials 100% sharp & solid
     opBaseplate: 1.0, // Bottom plate 100% solid
-    opDials: 1.0,      // Top plate and knurled dials 100% sharp & solid
+    overallOpacity: 1.0,
     pivotX: shutterDialCenter.x,
     pivotY: shutterDialCenter.y,
     pivotZ: shutterDialCenter.z,
-    worldPivotX: 0.10, // Offset right for left text
+    worldPivotX: 0.12, // Offset right for left text
     worldPivotY: 0.05,
     worldPivotZ: 0.0,
     camX: 0.0,
-    camY: 0.65, // Camera angled at 48° from above
-    camZ: 0.58,
-    lookX: 0.10,
+    camY: 0.65, // Camera angled at 48° from above looking down at top deck and dials
+    camZ: 0.62,
+    lookX: 0.12,
     lookY: 0.05,
     lookZ: 0.0,
     modelRotX: 0.22, // Camera pitch down ~48° onto top deck
@@ -982,24 +986,31 @@ function setupTimelineAndTriggers() {
   })
 
   // --- Phase 2, Chapter 3: Tactile Controls Pinned Dwell (sDialsPin -> sDialsEnd) ---
-  // Solid camera body frame, knurled dials hover cleanly above top plate before snapping flush
+  // 100% fully assembled and complete Leica M11 body (zero floating parts, zero hollow cavities, zero tàng hình)
   .to(anim, {
-    subExplode3: 0.50,
-    modelRotY: 0.20,
-    duration: durDialsPin * 0.6,
+    explode: 0.0,
+    subExplode1: 0.0,
+    subExplode2: 0.0,
+    subExplode3: 0.0,
+    opBayonet: 1.0,
+    opFrontMisc: 1.0,
+    opChassis: 1.0,
+    opSensor: 1.0,
+    opDials: 1.0,
+    opBaseplate: 1.0,
+    overallOpacity: 1.0,
+    modelRotY: 0.22, // Elegant specular sweep across solid dials and top deck
+    duration: durDialsPin,
     ease: 'none',
-  })
-  .to(anim, {
-    subExplode3: 0.0, // Dials snap flush onto top plate
-    modelRotY: 0.25,
-    duration: durDialsPin * 0.4,
-    ease: 'power2.out',
   })
 
   // --- Transition to Phase 4: Free-Style Metric Row (sDialsEnd -> sRangefinderPin) ---
   // Elevate camera target and world pivot so 3D camera sits comfortably in upper 50-55% of viewport
   .to(anim, {
     explode: 0.0,
+    subExplode1: 0.0,
+    subExplode2: 0.0,
+    subExplode3: 0.0,
     modelScale: 0.85,
     pivotX: overallModelCenter.x,
     pivotY: overallModelCenter.y,
@@ -1021,6 +1032,7 @@ function setupTimelineAndTriggers() {
     opSensor: 1.0,
     opDials: 1.0,
     opBaseplate: 1.0,
+    overallOpacity: 1.0,
     duration: durRangefinderTrans,
     ease: 'power2.inOut',
   })
@@ -1200,13 +1212,18 @@ function render() {
       modelRoot.visible = false;
     } else {
       modelRoot.visible = true;
+      const isChapter3 = (state.activeSubAssembly === 'DIALS');
+
       moduleExplodeVectors.forEach((modVec, mesh) => {
         const orig = originalTransforms.get(mesh);
         const micro = microExplodeVectors.get(mesh);
         if (!orig) return;
 
         let baseOp = 1.0;
-        if (subAssemblySets.BAYONET.has(mesh)) {
+        if (isChapter3) {
+          // Chapter 3: Tactile Command - 100% fully assembled & complete Leica M11 body (all 66 meshes solid)
+          baseOp = 1.0;
+        } else if (subAssemblySets.BAYONET.has(mesh)) {
           baseOp = anim.opBayonet;
         } else if (subAssemblySets.FRONT_MISC.has(mesh)) {
           baseOp = anim.opFrontMisc;
@@ -1220,23 +1237,25 @@ function render() {
           baseOp = anim.opBaseplate;
         }
 
-        const finalOp = Math.max(0, Math.min(1, baseOp * masterOp));
+        const finalOp = isChapter3 ? 1.0 : Math.max(0, Math.min(1, baseOp * masterOp));
         if (finalOp <= 0.005) {
           mesh.visible = false;
         } else {
           mesh.visible = true;
           if (mesh.material && mesh.material.opacity !== undefined) {
             mesh.material.opacity = finalOp;
-            mesh.material.depthWrite = (finalOp > 0.95);
+            mesh.material.depthWrite = isChapter3 ? true : (finalOp > 0.95);
           }
         }
 
-        const macroZ = modVec.z * anim.explode;
+        // Macro explosion displacement (strictly 0 when explode == 0 or in Chapter 3)
+        const effectiveExplode = (isChapter3 || Math.abs(anim.explode) < 0.0001) ? 0.0 : anim.explode;
+        const macroZ = modVec.z * effectiveExplode;
         tempTargetPos.copy(orig.position);
         tempTargetPos.z += macroZ;
 
         let microX = 0, microY = 0, microZ = 0;
-        if (micro) {
+        if (micro && !isChapter3) {
           if (subAssemblySets.BAYONET.has(mesh)) {
             microX = micro.x * anim.subExplode1;
             microY = micro.y * anim.subExplode1;
@@ -1256,7 +1275,7 @@ function render() {
         tempTargetPos.y += microY;
         tempTargetPos.z += microZ;
 
-        mesh.position.lerp(tempTargetPos, 0.15);
+        mesh.position.lerp(tempTargetPos, 0.20);
       });
     }
 
