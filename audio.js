@@ -7,6 +7,7 @@ class MechanicalAudioEngine {
     this.ctx = null;
     this.masterGain = null;
     this.isMuted = false;
+    this.lastSoundTime = 0;
     this.lastTickTime = 0;
     this.lastRatchetTime = 0;
   }
@@ -37,7 +38,8 @@ class MechanicalAudioEngine {
   playTick(pitchRatio = 1.0) {
     if (this.isMuted) return;
     const now = performance.now();
-    if (now - this.lastTickTime < 45) return; // Throttle to prevent audio pile-up on rapid scroll
+    if (now - this.lastSoundTime < 35) return; // Throttle to prevent audio pile-up and clashes on rapid scroll
+    this.lastSoundTime = now;
     this.lastTickTime = now;
 
     this.init();
@@ -78,6 +80,7 @@ class MechanicalAudioEngine {
   // Dual metallic snap when components dock into place on reassembly
   playSnap() {
     if (this.isMuted) return;
+    this.lastSoundTime = performance.now();
     this.init();
     if (!this.ctx || !this.destination) return;
 
@@ -151,6 +154,7 @@ class MechanicalAudioEngine {
   // Iconic Leica mechanical focal-plane shutter release (Standard v1 synthesis)
   playShutter() {
     if (this.isMuted) return;
+    this.lastSoundTime = performance.now();
     this.init();
     if (!this.ctx || !this.destination) return;
 
@@ -235,6 +239,7 @@ class MechanicalAudioEngine {
   // Authentic spring-loaded bayonet rotation twist & heavy stainless steel latch click
   playMountLock() {
     if (this.isMuted) return;
+    this.lastSoundTime = performance.now();
     this.init();
     if (!this.ctx || !this.destination) return;
 
@@ -334,7 +339,8 @@ class MechanicalAudioEngine {
   playRatchet(pitch = 1.0) {
     if (this.isMuted) return;
     const now = performance.now();
-    if (now - this.lastRatchetTime < 40) return; // Prevent audio pile-up on rapid scroll
+    if (now - this.lastSoundTime < 35) return; // Unified rate-limiting preventing audio clash
+    this.lastSoundTime = now;
     this.lastRatchetTime = now;
 
     this.init();

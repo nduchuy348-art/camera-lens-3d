@@ -26,6 +26,27 @@ def create_pbr(mat_name, color, metallic=0.0, roughness=0.5, transmission=0.0, i
         bsdf.inputs['IOR'].default_value = ior
     return mat
 
+def separate_object_by_material(obj_name, name_map):
+    obj = bpy.data.objects.get(obj_name)
+    if not obj:
+        print(f"[WARN] Object {obj_name} not found for separation")
+        return
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.mode_set(mode='OBJECT')
+    bpy.ops.object.select_all(action='DESELECT')
+    obj.select_set(True)
+    bpy.ops.object.mode_set(mode='EDIT')
+    bpy.ops.mesh.separate(type='MATERIAL')
+    bpy.ops.object.mode_set(mode='OBJECT')
+    
+    for o in list(bpy.data.objects):
+        if obj_name in o.name:
+            mat_name = o.data.materials[0].name if o.data.materials else ''
+            if mat_name in name_map:
+                new_name = name_map[mat_name]
+                print(f"[SEP] Renamed {o.name} ({mat_name}) -> {new_name}")
+                o.name = new_name
+
 def apply_vibrant_setup():
     print("[1/3] Loading Leica M11 CAD base...")
     bpy.ops.wm.open_mainfile(filepath='/workspace/camera-lens-3d/LeicaM11_004.blend')
@@ -36,6 +57,26 @@ def apply_vibrant_setup():
             while o.data.color_attributes:
                 o.data.color_attributes.remove(o.data.color_attributes[0])
     print("[SUCCESS] Cleared all CAD ID vertex colors from all meshes.")
+
+    # 0b. Separate multi-material meshes into independent cleanly-addressable objects
+    separate_object_by_material('Shutter Speed Dial', {
+        'Dials': 'Shutter Speed Dial',
+        'White': 'Shutter Speed Dial White',
+        'Red': 'Shutter Speed Dial Red'
+    })
+    separate_object_by_material('ISO Dial', {
+        'Dials': 'ISO Dial',
+        'White': 'ISO Dial White',
+        'Red': 'ISO Dial Red'
+    })
+    separate_object_by_material('Body Top', {
+        'Top': 'Body Top',
+        'White': 'Body Top Markings White'
+    })
+    separate_object_by_material('Main Switch', {
+        'White': 'Main Switch White',
+        'Shoe': 'Main Switch'
+    })
     
     # --- PBR MATERIAL SUITE ---
     # 1. Iconic Leica Red Badge
@@ -54,6 +95,12 @@ def apply_vibrant_setup():
     # 5. Knurled Mechanical Dials & Wheels (Gunmetal alloy)
     mat_dials = create_pbr("Vibrant_Dial_Metal", (0.050, 0.052, 0.055, 1.0), metallic=0.88, roughness=0.25)
     
+    # 5b. Crisp Engraved White Numbers & Markings (Luminous Enamel Inlay)
+    mat_dial_white = create_pbr("Vibrant_Dial_White", (1.0, 1.0, 1.0, 1.0), metallic=0.05, roughness=0.12)
+    
+    # 5c. Crisp Red 'A' Alignment Mark on Dials
+    mat_dial_red = create_pbr("Vibrant_Dial_Red", (0.88, 0.005, 0.010, 1.0), metallic=0.08, roughness=0.18)
+    
     # 6. Deep Optical Sapphire Viewfinder & Rangefinder (Anti-reflective cyan-blue sheen)
     mat_glass = create_pbr("Vibrant_ViewFinder_Glass", (0.02, 0.12, 0.28, 0.25), metallic=0.08, roughness=0.02, transmission=0.95, ior=1.54)
     mat_glass.blend_method = 'BLEND'
@@ -67,7 +114,7 @@ def apply_vibrant_setup():
     # 9. Gold Battery Contacts
     mat_gold = create_pbr("Vibrant_Gold", (1.0, 0.82, 0.18, 1.0), metallic=1.0, roughness=0.15)
     
-    # Assign materials across 66 components
+    # Assign materials across all components
     for o in bpy.data.objects:
         if o.type != 'MESH':
             continue
@@ -103,14 +150,19 @@ def apply_vibrant_setup():
             continue
 
         o.data.materials.clear()
-        if "body top" in n or "body bottom" in n:
+        
+        # Engraved dial text and white markings
+        if "white" in n:
+            o.data.materials.append(mat_dial_white)
+        elif "red" in n and "badge" not in n:
+            o.data.materials.append(mat_dial_red)
+        elif "body top" in n or "body bottom" in n:
             o.data.materials.append(mat_anodized)
         elif "middle" in n:
             o.data.materials.append(mat_leather)
         elif "bayonet" in n or "strap" in n or "lever" in n:
             o.data.materials.append(mat_chrome)
         elif "release button" in n or "main switch.001" in n:
-            # Shutter button center & release button
             o.data.materials.append(mat_chrome)
         elif "dial" in n or "switch" in n or "wheel" in n or "button" in n:
             o.data.materials.append(mat_dials)
@@ -125,7 +177,7 @@ def apply_vibrant_setup():
         else:
             o.data.materials.append(mat_anodized)
 
-    print("[2/3] Exporting leica_m11_master.glb without vertex colors...")
+    print("[2/3] Exporting leica_m11_master.glb with crisp dial markings...")
     glb_out = '/workspace/camera-lens-3d/assets/leica_m11_master.glb'
     bpy.ops.export_scene.gltf(
         filepath=glb_out,
@@ -133,7 +185,7 @@ def apply_vibrant_setup():
         use_selection=False,
         export_apply=True,
         export_materials='EXPORT',
-        export_colors=False # NO CAD ID vertex color tints!
+        export_colors=False
     )
     print(f"[SUCCESS] Exported GLB to: {glb_out}")
 

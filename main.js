@@ -28,11 +28,6 @@ const watermarkInner = document.getElementById('watermark-inner');
 const btnReplay = document.getElementById('btn-replay');
 const btnToggleFinish = document.getElementById('btn-toggle-finish');
 const btnFinishLabel = document.getElementById('btn-finish-label');
-const btnSoundToggle = document.getElementById('btn-sound-toggle');
-const soundStatusLabel = document.getElementById('sound-status-label');
-const soundIconOn = document.querySelector('.sound-icon-on');
-const soundIconOff = document.querySelector('.sound-icon-off');
-const brandEditionTag = document.getElementById('brand-edition-tag');
 const preloader = document.getElementById('preloader');
 const preloaderCounter = document.getElementById('preloader-counter-val');
 const preloaderBar = document.getElementById('preloader-bar');
@@ -165,6 +160,24 @@ const matSilverKnurledDial = new THREE.MeshStandardMaterial({
   roughness: 0.14,
   normalMap: knurledNormal,
   normalScale: new THREE.Vector2(2.0, 2.0),
+});
+
+// Crisp Luminous White Engraved Numbers for Leica Dials & Top Plate
+const matDialTextWhite = new THREE.MeshStandardMaterial({
+  color: new THREE.Color(0xFFFFFF),
+  emissive: new THREE.Color(0xFFFFFF),
+  emissiveIntensity: 0.35, // Crisp luminous white matching authentic Leica engraved enamel inlay
+  roughness: 0.15,
+  metalness: 0.05,
+});
+
+// Vibrant Leica Red 'A' Mark on Dials
+const matDialTextRed = new THREE.MeshStandardMaterial({
+  color: new THREE.Color(0xE00613),
+  emissive: new THREE.Color(0xE00613),
+  emissiveIntensity: 0.25,
+  roughness: 0.18,
+  metalness: 0.08,
 });
 
 // Body Top & Bottom Plates in Stealth Black Finish
@@ -311,7 +324,11 @@ function classifyAndAssignVectors(mesh) {
   });
 
   // Assign specialized materials
-  if (name.includes('body top') || name.includes('body bottom')) {
+  if (name.includes('white')) {
+    mesh.material = matDialTextWhite.clone();
+  } else if (name.includes('red') && !name.includes('badge')) {
+    mesh.material = matDialTextRed.clone();
+  } else if (name.includes('body top') || name.includes('body bottom')) {
     bodyPlates.push(mesh);
     mesh.material = state.finish === 'silver' ? matSilverChrome : matBlackAnodized;
   } else if (name.includes('dial') || name.includes('thumb wheel')) {
@@ -417,7 +434,7 @@ function classifyAndAssignVectors(mesh) {
     microExplodeVectors.set(mesh, new THREE.Vector3(0, 0, 0));
   }
 
-  if (name.includes('shutter speed dial') || name === 'shutter speed dial') {
+  if (name === 'shutter speed dial') {
     shutterDialMesh = mesh;
   }
 }
@@ -770,22 +787,21 @@ function setupTimelineAndTriggers() {
     const speedMultiplier = Math.min(1.35, Math.max(0.95, 0.95 + (speed / 3500) * 0.40));
 
     // 1. Mechanical Dial Detent Audio Click & Chapter 3 Winding Ratchet on Scroll
-    const currentDetent = Math.floor(scrollY / 45);
-    if (currentDetent !== state.lastDetent) {
-      if (state.lastDetent !== null) {
-        if (scrollY >= sDialsPin - 50 && scrollY <= sDialsEnd + 50) {
-          // Chapter 3 Tactile Command: delicate mechanical winding gear ratchet clicks!
-          audio.playRatchet(speedMultiplier);
-          if (shutterDialMesh) {
-            shutterDialMesh.rotation.y += (currentDetent > state.lastDetent ? 0.12 : -0.12);
+    if (state.isLoaded) {
+      const currentDetent = Math.floor(scrollY / 45);
+      if (currentDetent !== state.lastDetent) {
+        if (state.lastDetent !== null && state.welcomed) {
+          if (scrollY >= sDialsPin - 30 && scrollY <= sDialsEnd + 30) {
+            // Chapter 3 Tactile Command: delicate mechanical winding gear ratchet clicks!
+            audio.playRatchet(speedMultiplier);
+          } else {
+            const detentVariation = 1.0 + ((Math.abs(currentDetent) % 5) * 0.04);
+            const finalPitch = speedMultiplier * detentVariation;
+            audio.playTick(finalPitch);
           }
-        } else {
-          const detentVariation = 1.0 + ((Math.abs(currentDetent) % 5) * 0.04);
-          const finalPitch = speedMultiplier * detentVariation;
-          audio.playTick(finalPitch);
         }
+        state.lastDetent = currentDetent;
       }
-      state.lastDetent = currentDetent;
     }
 
     // 2. Spring-Loaded Bayonet Rotation Twist & Heavy Steel Latch Click Past Chapter 1
@@ -825,15 +841,8 @@ function setupTimelineAndTriggers() {
       toggleHotspots(shouldShowHotspots);
     }
 
-    // 4. Decisive Climax Impact Shake & Reassembly Mechanical Snap Audio
-    if (scrollY >= sAssembledPin - 50 && scrollY <= sAssembledPin + 150) {
-      if (!state.snappedClimax) {
-        triggerImpactShake();
-        audio.playSnap();
-        audio.playShutter();
-        state.snappedClimax = true;
-      }
-    } else if (scrollY < sAssembledPin - 120 || scrollY > sAssembledEnd + 120) {
+    // 4. Reset snap climax trigger if scrolling back before assembled section
+    if (scrollY < sAssembledPin - 100 || scrollY > sAssembledEnd + 120) {
       state.snappedClimax = false;
     }
 
@@ -1131,6 +1140,14 @@ function setupTimelineAndTriggers() {
     duration: durAssembledTrans,
     ease: 'power2.inOut',
   })
+  .call(() => {
+    // Exact visual moment of mechanical camera docking
+    if (!state.snappedClimax) {
+      triggerImpactShake();
+      audio.playSnap();
+      state.snappedClimax = true;
+    }
+  })
 
   // --- Phase 5: Reassembly Synthesis Pinned Dwell (sAssembledPin -> sAssembledEnd) ---
   // Hotspot annotations active
@@ -1169,14 +1186,16 @@ const unlockAudioOnGesture = () => {
   const resumePromise = audio.init();
   const checkUnlocked = () => {
     if (audio.ctx && audio.ctx.state === 'running') {
-      if (!state.welcomed) {
+      if (state.isLoaded && !state.welcomed) {
         state.welcomed = true;
         audio.playShutter(); // Authentic welcome shutter click on first interaction!
       }
-      const gestures = ['wheel', 'scroll', 'pointerdown', 'touchstart', 'click', 'keydown'];
-      gestures.forEach((evt) => {
-        window.removeEventListener(evt, unlockAudioOnGesture);
-      });
+      if (state.isLoaded) {
+        const gestures = ['wheel', 'scroll', 'pointerdown', 'touchstart', 'click', 'keydown'];
+        gestures.forEach((evt) => {
+          window.removeEventListener(evt, unlockAudioOnGesture);
+        });
+      }
     }
   };
 
@@ -1190,29 +1209,16 @@ const unlockAudioOnGesture = () => {
   window.addEventListener(evt, unlockAudioOnGesture, { passive: true });
 });
 
+// Zero-latency direct window scroll listener for synchronized dial detent audio
+window.addEventListener('scroll', () => {
+  const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+  syncScrollState(scrollY);
+}, { passive: true });
+
 window.addEventListener('pointermove', (e) => {
   state.mouse.targetX = (e.clientX / window.innerWidth) * 2 - 1;
   state.mouse.targetY = -(e.clientY / window.innerHeight) * 2 + 1;
 });
-
-// Sound Indicator & Mute Toggle Button
-if (btnSoundToggle) {
-  btnSoundToggle.addEventListener('click', () => {
-    const isMuted = audio.toggleMute();
-    if (!isMuted) {
-      audio.playApertureClick();
-    }
-    btnSoundToggle.classList.toggle('is-muted', isMuted);
-    btnSoundToggle.setAttribute('aria-pressed', (!isMuted).toString());
-    if (soundStatusLabel) {
-      soundStatusLabel.textContent = isMuted ? 'Sound: OFF' : 'Sound: ON';
-    }
-    if (soundIconOn && soundIconOff) {
-      soundIconOn.style.display = isMuted ? 'none' : 'block';
-      soundIconOff.style.display = isMuted ? 'block' : 'none';
-    }
-  });
-}
 
 // Replay Button (Trigger Leica focal-plane shutter release and scroll to top)
 if (btnReplay) {
@@ -1229,12 +1235,10 @@ if (btnToggleFinish) {
     if (state.finish === 'black') {
       state.finish = 'silver';
       if (btnFinishLabel) btnFinishLabel.textContent = 'Finish: Classic Silver';
-      if (brandEditionTag) brandEditionTag.textContent = 'Classic Silver';
       btnToggleFinish.setAttribute('data-finish', 'silver');
     } else {
       state.finish = 'black';
       if (btnFinishLabel) btnFinishLabel.textContent = 'Finish: Stealth Black';
-      if (brandEditionTag) brandEditionTag.textContent = 'Stealth Black';
       btnToggleFinish.setAttribute('data-finish', 'black');
     }
     updateFinishMaterials();
@@ -1246,13 +1250,6 @@ if (hotspotShutter) {
   hotspotShutter.style.cursor = 'pointer';
   hotspotShutter.addEventListener('click', () => {
     audio.playRatchet();
-    if (shutterDialMesh) {
-      gsap.to(shutterDialMesh.rotation, {
-        y: shutterDialMesh.rotation.y + Math.PI / 4,
-        duration: 0.35,
-        ease: 'power2.out',
-      });
-    }
   });
 }
 if (hotspotViewfinder) {
@@ -1273,13 +1270,6 @@ document.querySelectorAll('.interactive-chip[data-action="ratchet"]').forEach((c
   chip.addEventListener('click', () => {
     const pitch = parseFloat(chip.getAttribute('data-pitch')) || 1.0;
     audio.playRatchet(pitch);
-    if (shutterDialMesh) {
-      gsap.to(shutterDialMesh.rotation, {
-        y: shutterDialMesh.rotation.y + Math.PI / 6,
-        duration: 0.25,
-        ease: 'power2.out',
-      });
-    }
   });
 });
 
