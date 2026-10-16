@@ -80,7 +80,7 @@ class MechanicalAudioEngine {
   // Dual metallic snap when components dock into place on reassembly
   playSnap() {
     if (this.isMuted) return;
-    this.lastSoundTime = performance.now();
+    this.lastSoundTime = performance.now() + 65; // Protect 85ms docking snap from detent clash
     this.init();
     if (!this.ctx || !this.destination) return;
 
@@ -154,7 +154,7 @@ class MechanicalAudioEngine {
   // Iconic Leica mechanical focal-plane shutter release (Standard v1 synthesis)
   playShutter() {
     if (this.isMuted) return;
-    this.lastSoundTime = performance.now();
+    this.lastSoundTime = performance.now() + 85; // Protect full 85ms focal-plane shutter release from detent clash
     this.init();
     if (!this.ctx || !this.destination) return;
 
@@ -239,7 +239,7 @@ class MechanicalAudioEngine {
   // Authentic spring-loaded bayonet rotation twist & heavy stainless steel latch click
   playMountLock() {
     if (this.isMuted) return;
-    this.lastSoundTime = performance.now();
+    this.lastSoundTime = performance.now() + 90; // Protect 130ms bayonet latching from detent clash
     this.init();
     if (!this.ctx || !this.destination) return;
 

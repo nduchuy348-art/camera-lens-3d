@@ -166,18 +166,36 @@ const matSilverKnurledDial = new THREE.MeshStandardMaterial({
 const matDialTextWhite = new THREE.MeshStandardMaterial({
   color: new THREE.Color(0xFFFFFF),
   emissive: new THREE.Color(0xFFFFFF),
-  emissiveIntensity: 0.35, // Crisp luminous white matching authentic Leica engraved enamel inlay
-  roughness: 0.15,
+  emissiveIntensity: 0.45, // Crisp luminous white matching authentic Leica engraved enamel inlay
+  roughness: 0.12,
   metalness: 0.05,
+  polygonOffset: true,
+  polygonOffsetFactor: -1.0,
+  polygonOffsetUnits: -2.0,
 });
 
 // Vibrant Leica Red 'A' Mark on Dials
 const matDialTextRed = new THREE.MeshStandardMaterial({
   color: new THREE.Color(0xE00613),
   emissive: new THREE.Color(0xE00613),
-  emissiveIntensity: 0.25,
-  roughness: 0.18,
+  emissiveIntensity: 0.35,
+  roughness: 0.15,
   metalness: 0.08,
+  polygonOffset: true,
+  polygonOffsetFactor: -1.0,
+  polygonOffsetUnits: -2.0,
+});
+
+// Deep Jet Black Engraved Markings for Classic Silver Finish
+const matDialTextBlack = new THREE.MeshStandardMaterial({
+  color: new THREE.Color(0x111111),
+  emissive: new THREE.Color(0x000000),
+  emissiveIntensity: 0.0,
+  roughness: 0.22,
+  metalness: 0.10,
+  polygonOffset: true,
+  polygonOffsetFactor: -1.0,
+  polygonOffsetUnits: -2.0,
 });
 
 // Body Top & Bottom Plates in Stealth Black Finish
@@ -245,6 +263,7 @@ let modelRoot = null;
 const bodyPlates = [];
 const dialMeshes = [];
 const hardwareMeshes = [];
+const whiteMarkingsMeshes = [];
 let leatheretteMesh = null;
 let bayonetFlangeMesh = null;
 let shutterDialMesh = null;
@@ -292,6 +311,12 @@ function updateFinishMaterials() {
     mesh.material.depthWrite = true;
     originalMaterials.set(mesh, mesh.material);
   });
+  whiteMarkingsMeshes.forEach((mesh) => {
+    mesh.material = (isSilver ? matDialTextBlack : matDialTextWhite).clone();
+    mesh.material.transparent = true;
+    mesh.material.depthWrite = true;
+    originalMaterials.set(mesh, mesh.material);
+  });
   if (leatheretteMesh) {
     leatheretteMesh.material = matLeatherette.clone();
     leatheretteMesh.material.transparent = true;
@@ -325,7 +350,8 @@ function classifyAndAssignVectors(mesh) {
 
   // Assign specialized materials
   if (name.includes('white')) {
-    mesh.material = matDialTextWhite.clone();
+    whiteMarkingsMeshes.push(mesh);
+    mesh.material = (state.finish === 'silver' ? matDialTextBlack : matDialTextWhite).clone();
   } else if (name.includes('red') && !name.includes('badge')) {
     mesh.material = matDialTextRed.clone();
   } else if (name.includes('body top') || name.includes('body bottom')) {
@@ -670,10 +696,175 @@ function updateHotspotPositions() {
 }
 
 /* ==========================================================================
-   GSAP & SCROLLTRIGGER SYNCHRONIZED CHOREOGRAPHY
+   GSAP & SCROLLTRIGGER SYNCHRONIZED CHOREOGRAPHY & HAPTIC DETENTS
    ========================================================================== */
 let masterTimeline = null;
 let pinTriggers = [];
+
+// Shared layout and scroll metrics accessible across direct listeners and timeline
+const scrollMetrics = {
+  sBayonetPin: 0,
+  sBayonetEnd: 0,
+  sSensorPin: 0,
+  sSensorEnd: 0,
+  sDialsPin: 0,
+  sDialsEnd: 0,
+  sRangefinderPin: 0,
+  sRangefinderEnd: 0,
+  sAssembledPin: 0,
+  sAssembledEnd: 0,
+  sOutroEnd: 0,
+  durBayonetPin: 1,
+  durSensorTrans: 1,
+  durSensorPin: 1,
+  durDialsTrans: 1,
+  durDialsPin: 1,
+  durRangefinderTrans: 1,
+  durRangefinderPin: 1,
+  durAssembledTrans: 1,
+  durAssembledPin: 1,
+  durOutro: 1,
+};
+
+let lastScrollY = typeof window !== 'undefined' ? (window.pageYOffset || document.documentElement.scrollTop || 0) : 0;
+let lastScrollTime = performance.now();
+let smoothedVelocity = 0;
+
+// High-precision zero-latency state synchronization & mechanical audio detents
+function syncScrollState(scrollY, velocity) {
+  if (!state.isLoaded) return;
+
+  const now = performance.now();
+  const dt = now - lastScrollTime;
+
+  // Recalculate velocity only when at least 4ms have elapsed to prevent zero-velocity collapse
+  if (dt >= 4) {
+    const instantVelocity = (velocity !== undefined && velocity !== null && !isNaN(velocity))
+      ? Math.abs(velocity)
+      : (Math.abs(scrollY - lastScrollY) / dt) * 1000;
+    smoothedVelocity = smoothedVelocity * 0.65 + instantVelocity * 0.35;
+    lastScrollY = scrollY;
+    lastScrollTime = now;
+  }
+
+  // Speed multiplier 0.95 to 1.35 based on smoothed scroll velocity
+  const speedMultiplier = Math.min(1.35, Math.max(0.95, 0.95 + (smoothedVelocity / 3500) * 0.40));
+
+  // 1. Mechanical Dial Detent Audio Click & Chapter 3 Winding Ratchet on Scroll
+  const currentDetent = Math.floor(scrollY / 45);
+  if (currentDetent !== state.lastDetent) {
+    if (state.lastDetent !== null && state.welcomed) {
+      const inChapter3 = (state.activeSubAssembly === 'DIALS') ||
+        (scrollY >= scrollMetrics.sDialsPin - 30 && scrollY <= scrollMetrics.sDialsEnd + 30);
+
+      if (inChapter3) {
+        // Chapter 3 Tactile Command: delicate mechanical winding gear ratchet clicks!
+        const toothPitch = speedMultiplier * (1.0 + ((Math.abs(currentDetent) % 3) * 0.03));
+        audio.playRatchet(toothPitch);
+      } else {
+        const detentVariation = 1.0 + ((Math.abs(currentDetent) % 5) * 0.04);
+        const finalPitch = speedMultiplier * detentVariation;
+        audio.playTick(finalPitch);
+      }
+    }
+    state.lastDetent = currentDetent;
+  }
+
+  // 2. Spring-Loaded Bayonet Rotation Twist & Heavy Steel Latch Click Past Chapter 1
+  if (scrollY >= scrollMetrics.sBayonetEnd - 30 && scrollY <= scrollMetrics.sSensorPin + 60) {
+    if (!state.mountLocked) {
+      audio.playMountLock();
+      state.mountLocked = true;
+    }
+  } else if (scrollY < scrollMetrics.sBayonetEnd - 80) {
+    state.mountLocked = false;
+  }
+
+  // 3. Synchronize Chapter Isolation HUD & Reticle Lines
+  let desiredMode = null;
+  if (scrollY < scrollMetrics.sBayonetPin - 80) {
+    desiredMode = null;
+  } else if (scrollY < (scrollMetrics.sBayonetEnd + scrollMetrics.sSensorPin) / 2) {
+    desiredMode = 'BAYONET';
+  } else if (scrollY < (scrollMetrics.sSensorEnd + scrollMetrics.sDialsPin) / 2) {
+    desiredMode = 'SENSOR';
+  } else if (scrollY < scrollMetrics.sDialsEnd + 60) {
+    desiredMode = 'DIALS';
+  } else if (scrollY < scrollMetrics.sAssembledEnd + 40) {
+    desiredMode = null;
+  } else {
+    desiredMode = 'OUTRO';
+  }
+
+  if (state.activeSubAssembly !== desiredMode) {
+    state.activeSubAssembly = desiredMode;
+    updateChapterMaterialsAndVisibility();
+  }
+
+  // 4. Hotspots toggle during Assembled section
+  const shouldShowHotspots = (scrollY >= scrollMetrics.sAssembledPin - 30 && scrollY <= scrollMetrics.sAssembledEnd + 20);
+  if (shouldShowHotspots !== state.hotspotsVisible) {
+    toggleHotspots(shouldShowHotspots);
+  }
+
+  // 5. Reset snap climax trigger if scrolling back before assembled section
+  if (scrollY < scrollMetrics.sAssembledPin - 100 || scrollY > scrollMetrics.sAssembledEnd + 120) {
+    state.snappedClimax = false;
+  }
+
+  // 6. Cinematic Drift & Cross-Fade for Editorial Cards
+  if (cardBayonet && scrollMetrics.durBayonetPin > 0) {
+    const p = (scrollY - scrollMetrics.sBayonetPin) / scrollMetrics.durBayonetPin;
+    const op = p < 0 ? Math.max(0, 1 + p * 3) : p > 1 ? Math.max(0, 1 - (p - 1) * 3) : 1;
+    const drift = (p - 0.5) * -30;
+    cardBayonet.style.opacity = `${op}`;
+    cardBayonet.style.transform = `translateY(${drift}px)`;
+  }
+  if (cardSensor && scrollMetrics.durSensorPin > 0) {
+    const p = (scrollY - scrollMetrics.sSensorPin) / scrollMetrics.durSensorPin;
+    const op = p < 0 ? Math.max(0, 1 + p * 3) : p > 1 ? Math.max(0, 1 - (p - 1) * 3) : 1;
+    const drift = (p - 0.5) * -30;
+    cardSensor.style.opacity = `${op}`;
+    cardSensor.style.transform = `translateY(${drift}px)`;
+  }
+  if (cardDials && scrollMetrics.durDialsPin > 0) {
+    const p = (scrollY - scrollMetrics.sDialsPin) / scrollMetrics.durDialsPin;
+    const op = p < 0 ? Math.max(0, 1 + p * 3) : p > 1 ? Math.max(0, 1 - (p - 1) * 3) : 1;
+    const drift = (p - 0.5) * -30;
+    cardDials.style.opacity = `${op}`;
+    cardDials.style.transform = `translateY(${drift}px)`;
+  }
+
+  // 7. Cinematic Drift & Fade for Free-style 60MP row
+  const freestyleContainer = document.querySelector('.freestyle-metrics-container');
+  if (freestyleContainer && scrollMetrics.durRangefinderPin > 0) {
+    const p = (scrollY - scrollMetrics.sRangefinderPin) / scrollMetrics.durRangefinderPin;
+    const op = p < 0 ? Math.max(0, 1 + p * 3.5) : p > 1 ? Math.max(0, 1 - (p - 1) * 3.5) : 1;
+    const drift = (p - 0.5) * -25;
+    freestyleContainer.style.opacity = `${op}`;
+    freestyleContainer.style.transform = `translateY(${drift}px)`;
+  }
+
+  // 8. Cinematic Drift & Fade for Phase 5 Reassembly text
+  const assembledText = document.querySelector('.assembled-sticky-text');
+  if (assembledText && scrollMetrics.durAssembledPin > 0) {
+    const p = (scrollY - scrollMetrics.sAssembledPin) / scrollMetrics.durAssembledPin;
+    const op = p < 0 ? Math.max(0, 1 + p * 3.5) : p > 1 ? Math.max(0, 1 - (p - 1) * 3.5) : 1;
+    const drift = (p - 0.5) * -20;
+    assembledText.style.opacity = `${op}`;
+    assembledText.style.transform = `translateY(${drift}px)`;
+  }
+
+  // 9. Outro Typography Drift & Fade
+  const outroContent = document.querySelector('.outro-center-content');
+  if (outroContent && scrollMetrics.durOutro > 0) {
+    const p = (scrollY - scrollMetrics.sAssembledEnd) / scrollMetrics.durOutro;
+    const op = Math.min(1, Math.max(0, p * 2.2));
+    const drift = Math.max(0, (1 - p * 1.8) * 35);
+    outroContent.style.opacity = `${op}`;
+    outroContent.style.transform = `translateY(${drift}px)`;
+  }
+}
 
 function setupTimelineAndTriggers() {
   if (masterTimeline) {
@@ -748,157 +939,35 @@ function setupTimelineAndTriggers() {
       (document.documentElement.scrollHeight - window.innerHeight)
   );
 
-  const sBayonetPin = Math.max(1, pinBayonet.start);
-  const sBayonetEnd = Math.max(sBayonetPin + 1, pinBayonet.end);
-  const sSensorPin = Math.max(sBayonetEnd, pinSensor.start);
-  const sSensorEnd = Math.max(sSensorPin + 1, pinSensor.end);
-  const sDialsPin = Math.max(sSensorEnd, pinDials.start);
-  const sDialsEnd = Math.max(sDialsPin + 1, pinDials.end);
-  const sRangefinderPin = Math.max(sDialsEnd, pinRangefinder.start);
-  const sRangefinderEnd = Math.max(sRangefinderPin + 1, pinRangefinder.end);
-  const sAssembledPin = Math.max(sRangefinderEnd, pinAssembled.start);
-  const sAssembledEnd = Math.max(sAssembledPin + 1, pinAssembled.end);
-  const sOutroEnd = Math.max(sAssembledEnd + 1, maxScroll);
+  scrollMetrics.sBayonetPin = Math.max(1, pinBayonet.start);
+  scrollMetrics.sBayonetEnd = Math.max(scrollMetrics.sBayonetPin + 1, pinBayonet.end);
+  scrollMetrics.sSensorPin = Math.max(scrollMetrics.sBayonetEnd, pinSensor.start);
+  scrollMetrics.sSensorEnd = Math.max(scrollMetrics.sSensorPin + 1, pinSensor.end);
+  scrollMetrics.sDialsPin = Math.max(scrollMetrics.sSensorEnd, pinDials.start);
+  scrollMetrics.sDialsEnd = Math.max(scrollMetrics.sDialsPin + 1, pinDials.end);
+  scrollMetrics.sRangefinderPin = Math.max(scrollMetrics.sDialsEnd, pinRangefinder.start);
+  scrollMetrics.sRangefinderEnd = Math.max(scrollMetrics.sRangefinderPin + 1, pinRangefinder.end);
+  scrollMetrics.sAssembledPin = Math.max(scrollMetrics.sRangefinderEnd, pinAssembled.start);
+  scrollMetrics.sAssembledEnd = Math.max(scrollMetrics.sAssembledPin + 1, pinAssembled.end);
+  scrollMetrics.sOutroEnd = Math.max(scrollMetrics.sAssembledEnd + 1, maxScroll);
 
-  const durBayonetPin = sBayonetEnd - sBayonetPin;
-  const durSensorTrans = Math.max(1, sSensorPin - sBayonetEnd);
-  const durSensorPin = sSensorEnd - sSensorPin;
-  const durDialsTrans = Math.max(1, sDialsPin - sSensorEnd);
-  const durDialsPin = sDialsEnd - sDialsPin;
-  const durRangefinderTrans = Math.max(1, sRangefinderPin - sDialsEnd);
-  const durRangefinderPin = sRangefinderEnd - sRangefinderPin;
-  const durAssembledTrans = Math.max(1, sAssembledPin - sRangefinderEnd);
-  const durAssembledPin = sAssembledEnd - sAssembledPin;
-  const durOutro = Math.max(1, sOutroEnd - sAssembledEnd);
+  scrollMetrics.durBayonetPin = scrollMetrics.sBayonetEnd - scrollMetrics.sBayonetPin;
+  scrollMetrics.durSensorTrans = Math.max(1, scrollMetrics.sSensorPin - scrollMetrics.sBayonetEnd);
+  scrollMetrics.durSensorPin = scrollMetrics.sSensorEnd - scrollMetrics.sSensorPin;
+  scrollMetrics.durDialsTrans = Math.max(1, scrollMetrics.sDialsPin - scrollMetrics.sSensorEnd);
+  scrollMetrics.durDialsPin = scrollMetrics.sDialsEnd - scrollMetrics.sDialsPin;
+  scrollMetrics.durRangefinderTrans = Math.max(1, scrollMetrics.sRangefinderPin - scrollMetrics.sDialsEnd);
+  scrollMetrics.durRangefinderPin = scrollMetrics.sRangefinderEnd - scrollMetrics.sRangefinderPin;
+  scrollMetrics.durAssembledTrans = Math.max(1, scrollMetrics.sAssembledPin - scrollMetrics.sRangefinderEnd);
+  scrollMetrics.durAssembledPin = scrollMetrics.sAssembledEnd - scrollMetrics.sAssembledPin;
+  scrollMetrics.durOutro = Math.max(1, scrollMetrics.sOutroEnd - scrollMetrics.sAssembledEnd);
 
-  let lastScrollY = 0;
-  let lastScrollTime = performance.now();
-
-  function syncScrollState(scrollY, velocity) {
-    const now = performance.now();
-    const dt = Math.max(1, now - lastScrollTime);
-    const speed = (velocity !== undefined && velocity !== null && !isNaN(velocity))
-      ? Math.abs(velocity)
-      : (Math.abs(scrollY - lastScrollY) / dt) * 1000; // in px/sec
-    lastScrollY = scrollY;
-    lastScrollTime = now;
-
-    // Normalize speed (0 to ~3500 px/sec) -> speedMultiplier (0.95 to 1.35)
-    const speedMultiplier = Math.min(1.35, Math.max(0.95, 0.95 + (speed / 3500) * 0.40));
-
-    // 1. Mechanical Dial Detent Audio Click & Chapter 3 Winding Ratchet on Scroll
-    if (state.isLoaded) {
-      const currentDetent = Math.floor(scrollY / 45);
-      if (currentDetent !== state.lastDetent) {
-        if (state.lastDetent !== null && state.welcomed) {
-          if (scrollY >= sDialsPin - 30 && scrollY <= sDialsEnd + 30) {
-            // Chapter 3 Tactile Command: delicate mechanical winding gear ratchet clicks!
-            audio.playRatchet(speedMultiplier);
-          } else {
-            const detentVariation = 1.0 + ((Math.abs(currentDetent) % 5) * 0.04);
-            const finalPitch = speedMultiplier * detentVariation;
-            audio.playTick(finalPitch);
-          }
-        }
-        state.lastDetent = currentDetent;
-      }
-    }
-
-    // 2. Spring-Loaded Bayonet Rotation Twist & Heavy Steel Latch Click Past Chapter 1
-    if (scrollY >= sBayonetEnd - 30 && scrollY <= sSensorPin + 60) {
-      if (!state.mountLocked) {
-        audio.playMountLock();
-        state.mountLocked = true;
-      }
-    } else if (scrollY < sBayonetEnd - 80) {
-      state.mountLocked = false;
-    }
-
-    // 3. Synchronize Chapter Isolation HUD & Reticle Lines
-    let desiredMode = null;
-    if (scrollY < sBayonetPin - 80) {
-      desiredMode = null; // Hero / Explode Intro: all 66 visible
-    } else if (scrollY < (sBayonetEnd + sSensorPin) / 2) {
-      desiredMode = 'BAYONET'; // Chapter 1
-    } else if (scrollY < (sSensorEnd + sDialsPin) / 2) {
-      desiredMode = 'SENSOR'; // Chapter 2
-    } else if (scrollY < sDialsEnd + 60) {
-      desiredMode = 'DIALS'; // Chapter 3
-    } else if (scrollY < sAssembledEnd + 40) {
-      desiredMode = null; // Assembled (Phase 4 Free-Style 60MP & Phase 5 Reassembly): all 66 visible
-    } else {
-      desiredMode = 'OUTRO'; // Phase 6 Outro: Fully sacrificed model
-    }
-
-    if (state.activeSubAssembly !== desiredMode) {
-      state.activeSubAssembly = desiredMode;
-      updateChapterMaterialsAndVisibility();
-    }
-
-    // 3. Hotspots toggle during Assembled section
-    const shouldShowHotspots = (scrollY >= sAssembledPin - 30 && scrollY <= sAssembledEnd + 20);
-    if (shouldShowHotspots !== state.hotspotsVisible) {
-      toggleHotspots(shouldShowHotspots);
-    }
-
-    // 4. Reset snap climax trigger if scrolling back before assembled section
-    if (scrollY < sAssembledPin - 100 || scrollY > sAssembledEnd + 120) {
-      state.snappedClimax = false;
-    }
-
-    // 5. Cinematic Drift & Cross-Fade for Editorial Cards
-    if (cardBayonet) {
-      const p = (scrollY - sBayonetPin) / durBayonetPin;
-      const op = p < 0 ? Math.max(0, 1 + p * 3) : p > 1 ? Math.max(0, 1 - (p - 1) * 3) : 1;
-      const drift = (p - 0.5) * -30;
-      cardBayonet.style.opacity = `${op}`;
-      cardBayonet.style.transform = `translateY(${drift}px)`;
-    }
-    if (cardSensor) {
-      const p = (scrollY - sSensorPin) / durSensorPin;
-      const op = p < 0 ? Math.max(0, 1 + p * 3) : p > 1 ? Math.max(0, 1 - (p - 1) * 3) : 1;
-      const drift = (p - 0.5) * -30;
-      cardSensor.style.opacity = `${op}`;
-      cardSensor.style.transform = `translateY(${drift}px)`;
-    }
-    if (cardDials) {
-      const p = (scrollY - sDialsPin) / durDialsPin;
-      const op = p < 0 ? Math.max(0, 1 + p * 3) : p > 1 ? Math.max(0, 1 - (p - 1) * 3) : 1;
-      const drift = (p - 0.5) * -30;
-      cardDials.style.opacity = `${op}`;
-      cardDials.style.transform = `translateY(${drift}px)`;
-    }
-
-    // 6. Cinematic Drift & Fade for Free-style 60MP row
-    const freestyleContainer = document.querySelector('.freestyle-metrics-container');
-    if (freestyleContainer) {
-      const p = (scrollY - sRangefinderPin) / durRangefinderPin;
-      const op = p < 0 ? Math.max(0, 1 + p * 3.5) : p > 1 ? Math.max(0, 1 - (p - 1) * 3.5) : 1;
-      const drift = (p - 0.5) * -25;
-      freestyleContainer.style.opacity = `${op}`;
-      freestyleContainer.style.transform = `translateY(${drift}px)`;
-    }
-
-    // 7. Cinematic Drift & Fade for Phase 5 Reassembly text
-    const assembledText = document.querySelector('.assembled-sticky-text');
-    if (assembledText) {
-      const p = (scrollY - sAssembledPin) / durAssembledPin;
-      const op = p < 0 ? Math.max(0, 1 + p * 3.5) : p > 1 ? Math.max(0, 1 - (p - 1) * 3.5) : 1;
-      const drift = (p - 0.5) * -20;
-      assembledText.style.opacity = `${op}`;
-      assembledText.style.transform = `translateY(${drift}px)`;
-    }
-
-    // 8. Outro Typography Drift & Fade
-    const outroContent = document.querySelector('.outro-center-content');
-    if (outroContent) {
-      const p = (scrollY - sAssembledEnd) / durOutro;
-      const op = Math.min(1, Math.max(0, p * 2.2));
-      const drift = Math.max(0, (1 - p * 1.8) * 35);
-      outroContent.style.opacity = `${op}`;
-      outroContent.style.transform = `translateY(${drift}px)`;
-    }
-  }
+  const {
+    sBayonetPin, sBayonetEnd, sSensorPin, sSensorEnd, sDialsPin, sDialsEnd,
+    sRangefinderPin, sRangefinderEnd, sAssembledPin, sAssembledEnd, sOutroEnd,
+    durBayonetPin, durSensorTrans, durSensorPin, durDialsTrans, durDialsPin,
+    durRangefinderTrans, durRangefinderPin, durAssembledTrans, durAssembledPin, durOutro
+  } = scrollMetrics;
 
   // 2. Master timeline calibrated 1:1 with real scroll pixels
   masterTimeline = gsap.timeline({
