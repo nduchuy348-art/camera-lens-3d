@@ -21,7 +21,7 @@
 }
 
 /* Defensive Version Dock Suppression */
-.version-dock, #version-dock, .version-link, [class*="version-dock"], [class*="version-switcher"] {
+.version-dock, #version-dock, .version-link, .version-links-scroll, [class*="version-dock"], [class*="version-switcher"], [class*="version-link"], [class*="version-links"], nav[aria-label*="Version" i], [aria-label*="Version Switcher" i] {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
