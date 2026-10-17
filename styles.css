@@ -41,9 +41,9 @@ html {
   font-size: 16px;
   background-color: var(--bg-canvas) !important;
   color: var(--ink-primary) !important;
-  overflow-x: hidden;
-  overflow-y: auto;
   scroll-behavior: auto;
+  /* Prevent horizontal scroll without forcing vertical scroll container computation */
+  overflow-x: clip;
 }
 
 body {
@@ -51,8 +51,24 @@ body {
   background-color: var(--bg-canvas) !important;
   color: var(--ink-primary) !important;
   line-height: 1.5;
-  overflow-x: hidden;
   min-height: 100vh;
+  position: relative;
+  /* Crucial: DO NOT set overflow-x: hidden or overflow-y on body to prevent secondary scrollbar */
+}
+
+/* Single Refined Viewport Scrollbar */
+html::-webkit-scrollbar {
+  width: 6px;
+}
+html::-webkit-scrollbar-track {
+  background: transparent;
+}
+html::-webkit-scrollbar-thumb {
+  background: rgba(24, 27, 30, 0.22);
+  border-radius: 999px;
+}
+html::-webkit-scrollbar-thumb:hover {
+  background: rgba(24, 27, 30, 0.45);
 }
 
 /* ==========================================================================
@@ -255,6 +271,7 @@ body {
 .scroll-container {
   position: relative;
   width: 100%;
+  overflow-x: clip;
 }
 
 .content-section {
