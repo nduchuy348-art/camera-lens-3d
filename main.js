@@ -572,8 +572,8 @@ const anim = {
 };
 
 let shakeIntensity = 0.0;
-function triggerImpactShake() {
-  shakeIntensity = 0.024;
+function triggerImpactShake(amt = 0.024) {
+  shakeIntensity = amt;
 }
 
 /* ==========================================================================
@@ -770,13 +770,15 @@ function syncScrollState(scrollY, velocity) {
     state.lastDetent = currentDetent;
   }
 
-  // 2. Spring-Loaded Bayonet Rotation Twist & Heavy Steel Latch Click Past Chapter 1
-  if (scrollY >= scrollMetrics.sBayonetEnd - 30 && scrollY <= scrollMetrics.sSensorPin + 60) {
+  // 2. Spring-Loaded Bayonet Rotation Twist & Heavy Steel Latch Click as Bayonet Docks into Chassis
+  const mountDockThreshold = scrollMetrics.sBayonetEnd + scrollMetrics.durSensorTrans * 0.86;
+  if (scrollY >= mountDockThreshold && scrollY <= scrollMetrics.sSensorPin + 80) {
     if (!state.mountLocked) {
+      triggerImpactShake(0.008);
       audio.playMountLock();
       state.mountLocked = true;
     }
-  } else if (scrollY < scrollMetrics.sBayonetEnd - 80) {
+  } else if (scrollY < mountDockThreshold - 80) {
     state.mountLocked = false;
   }
 
@@ -807,8 +809,14 @@ function syncScrollState(scrollY, velocity) {
     toggleHotspots(shouldShowHotspots);
   }
 
-  // 5. Reset snap climax trigger if scrolling back before assembled section
-  if (scrollY < scrollMetrics.sAssembledPin - 100 || scrollY > scrollMetrics.sAssembledEnd + 120) {
+  // 5. Reassembly Snap Climax Trigger
+  if (scrollY >= scrollMetrics.sAssembledPin - 20 && scrollY <= scrollMetrics.sAssembledEnd + 20) {
+    if (!state.snappedClimax) {
+      triggerImpactShake(0.024);
+      audio.playSnap();
+      state.snappedClimax = true;
+    }
+  } else if (scrollY < scrollMetrics.sAssembledPin - 100 || scrollY > scrollMetrics.sAssembledEnd + 120) {
     state.snappedClimax = false;
   }
 
