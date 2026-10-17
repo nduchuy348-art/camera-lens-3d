@@ -514,9 +514,17 @@ loader.load(
     updateFinishMaterials();
     setupTimelineAndTriggers();
 
-    // Smooth curtain reveal wipe
+    // Smooth curtain reveal wipe & authentic welcome shutter click
     if (preloader) {
       preloader.classList.add('loaded');
+      audio.init().then(() => {
+        if (!state.welcomed) {
+          audio.playShutter();
+          if (audio.ctx && audio.ctx.state === 'running') {
+            state.welcomed = true;
+          }
+        }
+      });
       setTimeout(() => {
         preloader.classList.add('hidden');
         preloader.style.display = 'none';
@@ -1268,7 +1276,7 @@ const unlockAudioOnGesture = () => {
         audio.playShutter(); // Authentic welcome shutter click on first interaction!
       }
       if (state.isLoaded) {
-        const gestures = ['wheel', 'scroll', 'pointerdown', 'touchstart', 'click', 'keydown'];
+        const gestures = ['pointermove', 'mousemove', 'mouseenter', 'pointerdown', 'touchstart', 'click', 'wheel', 'scroll', 'keydown'];
         gestures.forEach((evt) => {
           window.removeEventListener(evt, unlockAudioOnGesture);
         });
@@ -1282,7 +1290,7 @@ const unlockAudioOnGesture = () => {
     checkUnlocked();
   }
 };
-['wheel', 'scroll', 'pointerdown', 'touchstart', 'click', 'keydown'].forEach((evt) => {
+['pointermove', 'mousemove', 'mouseenter', 'pointerdown', 'touchstart', 'click', 'wheel', 'scroll', 'keydown'].forEach((evt) => {
   window.addEventListener(evt, unlockAudioOnGesture, { passive: true });
 });
 
