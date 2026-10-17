@@ -20,6 +20,14 @@
   --transition-smooth: opacity 0.5s var(--ease-out-expo), transform 0.5s var(--ease-out-expo);
 }
 
+/* Defensive Version Dock Suppression */
+.version-dock, #version-dock, .version-link, [class*="version-dock"], [class*="version-switcher"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* Base Reset */
 *, *::before, *::after {
   box-sizing: border-box;
