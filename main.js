@@ -74,15 +74,12 @@ if (typeof window !== 'undefined' && typeof window.Lenis !== 'undefined') {
     infinite: false,
   });
 
-  lenis.on('scroll', (e) => {
-    ScrollTrigger.update();
-    syncScrollState(e.scroll, e.velocity);
-  });
+  lenis.on('scroll', ScrollTrigger.update);
 
   gsap.ticker.add((time) => {
     lenis.raf(time * 1000);
   });
-  gsap.ticker.lagSmoothing(0);
+  gsap.ticker.lagSmoothing(500, 33);
 }
 
 /* ==========================================================================
@@ -711,6 +708,36 @@ function triggerImpactShake(amt = 0.024) {
 const activeLeaderAnchor = new THREE.Vector3();
 const tempVec = new THREE.Vector3();
 
+// Cached editorial card offsets to prevent forced layout reflows (getBoundingClientRect) in render loop
+const cardOffsets = {
+  BAYONET: { srcX: 0, srcY: 0 },
+  SENSOR: { srcX: 0, srcY: 0 },
+  DIALS: { srcX: 0, srcY: 0 },
+};
+
+function updateCardOffsets() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  if (cardBayonet) {
+    const rect = cardBayonet.getBoundingClientRect();
+    cardOffsets.BAYONET = { srcX: rect.right + 6, srcY: rect.top + rect.height * 0.38 };
+  } else {
+    cardOffsets.BAYONET = { srcX: w * 0.38, srcY: h * 0.48 };
+  }
+  if (cardSensor) {
+    const rect = cardSensor.getBoundingClientRect();
+    cardOffsets.SENSOR = { srcX: rect.left - 6, srcY: rect.top + rect.height * 0.38 };
+  } else {
+    cardOffsets.SENSOR = { srcX: w * 0.62, srcY: h * 0.48 };
+  }
+  if (cardDials) {
+    const rect = cardDials.getBoundingClientRect();
+    cardOffsets.DIALS = { srcX: rect.right + 6, srcY: rect.top + rect.height * 0.38 };
+  } else {
+    cardOffsets.DIALS = { srcX: w * 0.38, srcY: h * 0.48 };
+  }
+}
+
 function updateLeaderLine() {
   if (!leaderLine || !leaderPoint || !modelRoot) return;
 
@@ -722,13 +749,22 @@ function updateLeaderLine() {
 
   const mode = state.activeSubAssembly;
   if (mode === 'BAYONET') {
-    activeLeaderAnchor.copy(bayonetCenter);
-    if (bayonetFlangeMesh) activeLeaderAnchor.add(bayonetFlangeMesh.position);
+    if (bayonetFlangeMesh) {
+      bayonetFlangeMesh.getWorldPosition(activeLeaderAnchor);
+    } else {
+      activeLeaderAnchor.copy(bayonetCenter);
+      activeLeaderAnchor.applyMatrix4(modelRoot.matrixWorld);
+    }
   } else if (mode === 'SENSOR') {
     activeLeaderAnchor.copy(sensorCenter);
+    activeLeaderAnchor.applyMatrix4(modelRoot.matrixWorld);
   } else if (mode === 'DIALS') {
-    activeLeaderAnchor.copy(shutterDialCenter);
-    if (shutterDialMesh) activeLeaderAnchor.add(shutterDialMesh.position);
+    if (shutterDialMesh) {
+      shutterDialMesh.getWorldPosition(activeLeaderAnchor);
+    } else {
+      activeLeaderAnchor.copy(shutterDialCenter);
+      activeLeaderAnchor.applyMatrix4(modelRoot.matrixWorld);
+    }
   } else {
     leaderLine.style.opacity = '0';
     leaderPoint.style.opacity = '0';
@@ -736,11 +772,10 @@ function updateLeaderLine() {
   }
 
   tempVec.copy(activeLeaderAnchor);
-  tempVec.applyMatrix4(modelRoot.matrixWorld);
   tempVec.project(camera);
 
-  // If target is behind camera near-plane
-  if (tempVec.z > 1.0) {
+  // If target is behind camera near-plane or non-finite
+  if (tempVec.z > 1.0 || !isFinite(tempVec.x) || !isFinite(tempVec.y)) {
     leaderLine.style.opacity = '0';
     leaderPoint.style.opacity = '0';
     return;
@@ -751,33 +786,18 @@ function updateLeaderLine() {
   const targetX = (tempVec.x * widthHalf) + widthHalf;
   const targetY = -(tempVec.y * heightHalf) + heightHalf;
 
-  let activeCard = null;
-  if (mode === 'BAYONET') activeCard = cardBayonet;
-  else if (mode === 'SENSOR') activeCard = cardSensor;
-  else if (mode === 'DIALS') activeCard = cardDials;
+  const cardPos = cardOffsets[mode];
+  const srcX = cardPos ? cardPos.srcX : window.innerWidth * 0.38;
+  const srcY = cardPos ? cardPos.srcY : window.innerHeight * 0.48;
 
-  let srcX = window.innerWidth * 0.38;
-  let srcY = window.innerHeight * 0.48;
-
-  if (activeCard) {
-    const rect = activeCard.getBoundingClientRect();
-    if (mode === 'SENSOR') {
-      srcX = rect.left - 6;
-      srcY = rect.top + rect.height * 0.38;
-    } else {
-      srcX = rect.right + 6;
-      srcY = rect.top + rect.height * 0.38;
-    }
-  }
-
-  leaderLine.setAttribute('x1', `${srcX}`);
-  leaderLine.setAttribute('y1', `${srcY}`);
-  leaderLine.setAttribute('x2', `${targetX}`);
-  leaderLine.setAttribute('y2', `${targetY}`);
+  leaderLine.setAttribute('x1', `${Math.round(srcX)}`);
+  leaderLine.setAttribute('y1', `${Math.round(srcY)}`);
+  leaderLine.setAttribute('x2', `${Math.round(targetX)}`);
+  leaderLine.setAttribute('y2', `${Math.round(targetY)}`);
   leaderLine.style.opacity = '0.45';
 
-  leaderPoint.setAttribute('cx', `${targetX}`);
-  leaderPoint.setAttribute('cy', `${targetY}`);
+  leaderPoint.setAttribute('cx', `${Math.round(targetX)}`);
+  leaderPoint.setAttribute('cy', `${Math.round(targetY)}`);
   leaderPoint.style.opacity = '1.0';
 }
 
@@ -795,20 +815,32 @@ function updateHotspotPositions() {
     tempVec.copy(hotspotPositions.viewfinder);
     tempVec.applyMatrix4(modelRoot.matrixWorld);
     tempVec.project(camera);
-    if (tempVec.z <= 1.0) {
-      hotspotViewfinder.style.left = `${(tempVec.x * widthHalf) + widthHalf}px`;
-      hotspotViewfinder.style.top = `${-(tempVec.y * heightHalf) + heightHalf}px`;
+    if (tempVec.z <= 1.0 && isFinite(tempVec.x) && isFinite(tempVec.y)) {
+      const x = (tempVec.x * widthHalf) + widthHalf;
+      const y = -(tempVec.y * heightHalf) + heightHalf;
+      if (x >= -40 && x <= window.innerWidth + 40 && y >= -40 && y <= window.innerHeight + 40) {
+        hotspotViewfinder.style.left = `${Math.round(x)}px`;
+        hotspotViewfinder.style.top = `${Math.round(y)}px`;
+      }
     }
   }
 
   // 2. Shutter Dial Hotspot
   if (hotspotShutter) {
-    tempVec.copy(hotspotPositions.shutter);
-    tempVec.applyMatrix4(modelRoot.matrixWorld);
+    if (shutterDialMesh) {
+      shutterDialMesh.getWorldPosition(tempVec);
+    } else {
+      tempVec.copy(hotspotPositions.shutter);
+      tempVec.applyMatrix4(modelRoot.matrixWorld);
+    }
     tempVec.project(camera);
-    if (tempVec.z <= 1.0) {
-      hotspotShutter.style.left = `${(tempVec.x * widthHalf) + widthHalf}px`;
-      hotspotShutter.style.top = `${-(tempVec.y * heightHalf) + heightHalf}px`;
+    if (tempVec.z <= 1.0 && isFinite(tempVec.x) && isFinite(tempVec.y)) {
+      const x = (tempVec.x * widthHalf) + widthHalf;
+      const y = -(tempVec.y * heightHalf) + heightHalf;
+      if (x >= -40 && x <= window.innerWidth + 40 && y >= -40 && y <= window.innerHeight + 40) {
+        hotspotShutter.style.left = `${Math.round(x)}px`;
+        hotspotShutter.style.top = `${Math.round(y)}px`;
+      }
     }
   }
 
@@ -817,9 +849,13 @@ function updateHotspotPositions() {
     tempVec.copy(hotspotPositions.badge);
     tempVec.applyMatrix4(modelRoot.matrixWorld);
     tempVec.project(camera);
-    if (tempVec.z <= 1.0) {
-      hotspotBadge.style.left = `${(tempVec.x * widthHalf) + widthHalf}px`;
-      hotspotBadge.style.top = `${-(tempVec.y * heightHalf) + heightHalf}px`;
+    if (tempVec.z <= 1.0 && isFinite(tempVec.x) && isFinite(tempVec.y)) {
+      const x = (tempVec.x * widthHalf) + widthHalf;
+      const y = -(tempVec.y * heightHalf) + heightHalf;
+      if (x >= -40 && x <= window.innerWidth + 40 && y >= -40 && y <= window.innerHeight + 40) {
+        hotspotBadge.style.left = `${Math.round(x)}px`;
+        hotspotBadge.style.top = `${Math.round(y)}px`;
+      }
     }
   }
 }
@@ -838,16 +874,24 @@ function updateVernierHUD() {
   // 1. Bayonet Flange Callout
   if (hudBayonet) {
     if (mode === 'BAYONET') {
-      hudProjPos.copy(bayonetCenter);
-      hudProjPos.applyMatrix4(modelRoot.matrixWorld);
+      if (bayonetFlangeMesh) {
+        bayonetFlangeMesh.getWorldPosition(hudProjPos);
+      } else {
+        hudProjPos.copy(bayonetCenter);
+        hudProjPos.applyMatrix4(modelRoot.matrixWorld);
+      }
       hudProjPos.project(camera);
 
-      if (hudProjPos.z < 1.0) {
+      if (hudProjPos.z < 1.0 && isFinite(hudProjPos.x) && isFinite(hudProjPos.y)) {
         const x = (hudProjPos.x * widthHalf) + widthHalf;
         const y = -(hudProjPos.y * heightHalf) + heightHalf;
-        hudBayonet.style.left = `${Math.round(x + 24)}px`;
-        hudBayonet.style.top = `${Math.round(y - 20)}px`;
-        hudBayonet.classList.add('active');
+        if (x >= 40 && x <= window.innerWidth - 180 && y >= 40 && y <= window.innerHeight - 80) {
+          hudBayonet.style.left = `${Math.round(x + 24)}px`;
+          hudBayonet.style.top = `${Math.round(y - 20)}px`;
+          hudBayonet.classList.add('active');
+        } else {
+          hudBayonet.classList.remove('active');
+        }
       } else {
         hudBayonet.classList.remove('active');
       }
@@ -863,12 +907,16 @@ function updateVernierHUD() {
       hudProjPos.applyMatrix4(modelRoot.matrixWorld);
       hudProjPos.project(camera);
 
-      if (hudProjPos.z < 1.0) {
+      if (hudProjPos.z < 1.0 && isFinite(hudProjPos.x) && isFinite(hudProjPos.y)) {
         const x = (hudProjPos.x * widthHalf) + widthHalf;
         const y = -(hudProjPos.y * heightHalf) + heightHalf;
-        hudSensor.style.left = `${Math.round(x + 24)}px`;
-        hudSensor.style.top = `${Math.round(y - 20)}px`;
-        hudSensor.classList.add('active');
+        if (x >= 40 && x <= window.innerWidth - 180 && y >= 40 && y <= window.innerHeight - 80) {
+          hudSensor.style.left = `${Math.round(x + 24)}px`;
+          hudSensor.style.top = `${Math.round(y - 20)}px`;
+          hudSensor.classList.add('active');
+        } else {
+          hudSensor.classList.remove('active');
+        }
       } else {
         hudSensor.classList.remove('active');
       }
@@ -880,16 +928,24 @@ function updateVernierHUD() {
   // 3. Shutter Speed Dial Callout
   if (hudDial) {
     if (mode === 'DIALS') {
-      hudProjPos.copy(shutterDialCenter);
-      hudProjPos.applyMatrix4(modelRoot.matrixWorld);
+      if (shutterDialMesh) {
+        shutterDialMesh.getWorldPosition(hudProjPos);
+      } else {
+        hudProjPos.copy(shutterDialCenter);
+        hudProjPos.applyMatrix4(modelRoot.matrixWorld);
+      }
       hudProjPos.project(camera);
 
-      if (hudProjPos.z < 1.0) {
+      if (hudProjPos.z < 1.0 && isFinite(hudProjPos.x) && isFinite(hudProjPos.y)) {
         const x = (hudProjPos.x * widthHalf) + widthHalf;
         const y = -(hudProjPos.y * heightHalf) + heightHalf;
-        hudDial.style.left = `${Math.round(x + 24)}px`;
-        hudDial.style.top = `${Math.round(y - 20)}px`;
-        hudDial.classList.add('active');
+        if (x >= 40 && x <= window.innerWidth - 180 && y >= 40 && y <= window.innerHeight - 80) {
+          hudDial.style.left = `${Math.round(x + 24)}px`;
+          hudDial.style.top = `${Math.round(y - 20)}px`;
+          hudDial.classList.add('active');
+        } else {
+          hudDial.classList.remove('active');
+        }
       } else {
         hudDial.classList.remove('active');
       }
@@ -937,26 +993,29 @@ let smoothedVelocity = 0;
 // High-precision zero-latency state synchronization & mechanical audio detents
 function syncScrollState(scrollY, velocity) {
   if (!state.isLoaded) return;
+  if (typeof scrollY !== 'number' || isNaN(scrollY) || !isFinite(scrollY)) return;
 
   const now = performance.now();
   const dt = now - lastScrollTime;
 
   // Recalculate velocity only when at least 4ms have elapsed to prevent zero-velocity collapse
   if (dt >= 4) {
-    const instantVelocity = (velocity !== undefined && velocity !== null && !isNaN(velocity))
+    const instantVelocity = (velocity !== undefined && velocity !== null && isFinite(velocity))
       ? Math.abs(velocity)
       : (Math.abs(scrollY - lastScrollY) / dt) * 1000;
-    smoothedVelocity = smoothedVelocity * 0.65 + instantVelocity * 0.35;
+    const safeInstant = isFinite(instantVelocity) ? instantVelocity : 0;
+    smoothedVelocity = smoothedVelocity * 0.65 + safeInstant * 0.35;
     lastScrollY = scrollY;
     lastScrollTime = now;
   }
 
+  const safeVel = isFinite(smoothedVelocity) ? smoothedVelocity : 0;
   // Speed multiplier 0.95 to 1.35 based on smoothed scroll velocity
-  const speedMultiplier = Math.min(1.35, Math.max(0.95, 0.95 + (smoothedVelocity / 3500) * 0.40));
+  const speedMultiplier = Math.min(1.35, Math.max(0.95, 0.95 + (safeVel / 3500) * 0.40));
 
   // 1. Mechanical Dial Detent Audio Click & Chapter 3 Winding Ratchet on Scroll
   const currentDetent = Math.floor(scrollY / 45);
-  if (currentDetent !== state.lastDetent) {
+  if (isFinite(currentDetent) && currentDetent !== state.lastDetent) {
     if (state.lastDetent !== null) {
       if (audio.isUnlocked) {
         const inChapter3 = (state.activeSubAssembly === 'DIALS') ||
@@ -1029,36 +1088,47 @@ function syncScrollState(scrollY, velocity) {
     state.snappedClimax = false;
   }
 
-  // 6. Cinematic Drift & Cross-Fade for Editorial Cards
+  // 6. Cinematic Drift & Cross-Fade for Editorial Cards (Safely clamped with visibility toggling)
   if (cardBayonet && scrollMetrics.durBayonetPin > 0) {
     const p = (scrollY - scrollMetrics.sBayonetPin) / scrollMetrics.durBayonetPin;
-    const op = p < 0 ? Math.max(0, 1 + p * 3) : p > 1 ? Math.max(0, 1 - (p - 1) * 3) : 1;
-    const drift = (p - 0.5) * -30;
-    cardBayonet.style.opacity = `${op}`;
+    const safeP = isFinite(p) ? p : 0;
+    const op = safeP < 0 ? Math.max(0, 1 + safeP * 3) : safeP > 1 ? Math.max(0, 1 - (safeP - 1) * 3) : 1;
+    const finalOp = Math.max(0, Math.min(1, op));
+    const drift = Math.max(-30, Math.min(30, (safeP - 0.5) * -30));
+    cardBayonet.style.opacity = `${finalOp}`;
     cardBayonet.style.transform = `translateY(${drift}px)`;
+    cardBayonet.style.visibility = finalOp > 0.001 ? 'visible' : 'hidden';
   }
   if (cardSensor && scrollMetrics.durSensorPin > 0) {
     const p = (scrollY - scrollMetrics.sSensorPin) / scrollMetrics.durSensorPin;
-    const op = p < 0 ? Math.max(0, 1 + p * 3) : p > 1 ? Math.max(0, 1 - (p - 1) * 3) : 1;
-    const drift = (p - 0.5) * -30;
-    cardSensor.style.opacity = `${op}`;
+    const safeP = isFinite(p) ? p : 0;
+    const op = safeP < 0 ? Math.max(0, 1 + safeP * 3) : safeP > 1 ? Math.max(0, 1 - (safeP - 1) * 3) : 1;
+    const finalOp = Math.max(0, Math.min(1, op));
+    const drift = Math.max(-30, Math.min(30, (safeP - 0.5) * -30));
+    cardSensor.style.opacity = `${finalOp}`;
     cardSensor.style.transform = `translateY(${drift}px)`;
+    cardSensor.style.visibility = finalOp > 0.001 ? 'visible' : 'hidden';
   }
   if (cardDials && scrollMetrics.durDialsPin > 0) {
     const p = (scrollY - scrollMetrics.sDialsPin) / scrollMetrics.durDialsPin;
-    const op = p < 0 ? Math.max(0, 1 + p * 3) : p > 1 ? Math.max(0, 1 - (p - 1) * 3) : 1;
-    const drift = (p - 0.5) * -30;
-    cardDials.style.opacity = `${op}`;
+    const safeP = isFinite(p) ? p : 0;
+    const op = safeP < 0 ? Math.max(0, 1 + safeP * 3) : safeP > 1 ? Math.max(0, 1 - (safeP - 1) * 3) : 1;
+    const finalOp = Math.max(0, Math.min(1, op));
+    const drift = Math.max(-30, Math.min(30, (safeP - 0.5) * -30));
+    cardDials.style.opacity = `${finalOp}`;
     cardDials.style.transform = `translateY(${drift}px)`;
+    cardDials.style.visibility = finalOp > 0.001 ? 'visible' : 'hidden';
   }
 
   // 7. Cinematic Drift & Fade for Free-style 60MP row
   const freestyleContainer = document.querySelector('.freestyle-metrics-container');
   if (freestyleContainer && scrollMetrics.durRangefinderPin > 0) {
     const p = (scrollY - scrollMetrics.sRangefinderPin) / scrollMetrics.durRangefinderPin;
-    const op = p < 0 ? Math.max(0, 1 + p * 3.5) : p > 1 ? Math.max(0, 1 - (p - 1) * 3.5) : 1;
-    const drift = (p - 0.5) * -25;
-    freestyleContainer.style.opacity = `${op}`;
+    const safeP = isFinite(p) ? p : 0;
+    const op = safeP < 0 ? Math.max(0, 1 + safeP * 3.5) : safeP > 1 ? Math.max(0, 1 - (safeP - 1) * 3.5) : 1;
+    const finalOp = Math.max(0, Math.min(1, op));
+    const drift = Math.max(-25, Math.min(25, (safeP - 0.5) * -25));
+    freestyleContainer.style.opacity = `${finalOp}`;
     freestyleContainer.style.transform = `translateY(${drift}px)`;
   }
 
@@ -1066,9 +1136,11 @@ function syncScrollState(scrollY, velocity) {
   const assembledText = document.querySelector('.assembled-sticky-text');
   if (assembledText && scrollMetrics.durAssembledPin > 0) {
     const p = (scrollY - scrollMetrics.sAssembledPin) / scrollMetrics.durAssembledPin;
-    const op = p < 0 ? Math.max(0, 1 + p * 3.5) : p > 1 ? Math.max(0, 1 - (p - 1) * 3.5) : 1;
-    const drift = (p - 0.5) * -20;
-    assembledText.style.opacity = `${op}`;
+    const safeP = isFinite(p) ? p : 0;
+    const op = safeP < 0 ? Math.max(0, 1 + safeP * 3.5) : safeP > 1 ? Math.max(0, 1 - (safeP - 1) * 3.5) : 1;
+    const finalOp = Math.max(0, Math.min(1, op));
+    const drift = Math.max(-20, Math.min(20, (safeP - 0.5) * -20));
+    assembledText.style.opacity = `${finalOp}`;
     assembledText.style.transform = `translateY(${drift}px)`;
   }
 
@@ -1076,8 +1148,9 @@ function syncScrollState(scrollY, velocity) {
   const outroContent = document.querySelector('.outro-center-content');
   if (outroContent && scrollMetrics.durOutro > 0) {
     const p = (scrollY - scrollMetrics.sAssembledEnd) / scrollMetrics.durOutro;
-    const op = Math.min(1, Math.max(0, p * 2.2));
-    const drift = Math.max(0, (1 - p * 1.8) * 35);
+    const safeP = isFinite(p) ? Math.max(0, p) : 0;
+    const op = Math.min(1, Math.max(0, safeP * 2.2));
+    const drift = Math.max(0, Math.min(35, (1 - safeP * 1.8) * 35));
     outroContent.style.opacity = `${op}`;
     outroContent.style.transform = `translateY(${drift}px)`;
   }
@@ -1149,6 +1222,7 @@ function setupTimelineAndTriggers() {
 
   // Recalculate layout metrics & pin-spacers
   ScrollTrigger.refresh();
+  updateCardOffsets();
 
   const maxScroll = Math.max(
     1,
@@ -1156,17 +1230,17 @@ function setupTimelineAndTriggers() {
       (document.documentElement.scrollHeight - window.innerHeight)
   );
 
-  scrollMetrics.sBayonetPin = Math.max(1, pinBayonet.start);
-  scrollMetrics.sBayonetEnd = Math.max(scrollMetrics.sBayonetPin + 1, pinBayonet.end);
-  scrollMetrics.sSensorPin = Math.max(scrollMetrics.sBayonetEnd, pinSensor.start);
-  scrollMetrics.sSensorEnd = Math.max(scrollMetrics.sSensorPin + 1, pinSensor.end);
-  scrollMetrics.sDialsPin = Math.max(scrollMetrics.sSensorEnd, pinDials.start);
-  scrollMetrics.sDialsEnd = Math.max(scrollMetrics.sDialsPin + 1, pinDials.end);
-  scrollMetrics.sRangefinderPin = Math.max(scrollMetrics.sDialsEnd, pinRangefinder.start);
-  scrollMetrics.sRangefinderEnd = Math.max(scrollMetrics.sRangefinderPin + 1, pinRangefinder.end);
-  scrollMetrics.sAssembledPin = Math.max(scrollMetrics.sRangefinderEnd, pinAssembled.start);
-  scrollMetrics.sAssembledEnd = Math.max(scrollMetrics.sAssembledPin + 1, pinAssembled.end);
-  scrollMetrics.sOutroEnd = Math.max(scrollMetrics.sAssembledEnd + 1, maxScroll);
+  scrollMetrics.sBayonetPin = Math.max(1, pinBayonet.start || 0);
+  scrollMetrics.sBayonetEnd = Math.max(scrollMetrics.sBayonetPin + 1, pinBayonet.end || 0);
+  scrollMetrics.sSensorPin = Math.max(scrollMetrics.sBayonetEnd, pinSensor.start || 0);
+  scrollMetrics.sSensorEnd = Math.max(scrollMetrics.sSensorPin + 1, pinSensor.end || 0);
+  scrollMetrics.sDialsPin = Math.max(scrollMetrics.sSensorEnd, pinDials.start || 0);
+  scrollMetrics.sDialsEnd = Math.max(scrollMetrics.sDialsPin + 1, pinDials.end || 0);
+  scrollMetrics.sRangefinderPin = Math.max(scrollMetrics.sDialsEnd, pinRangefinder.start || 0);
+  scrollMetrics.sRangefinderEnd = Math.max(scrollMetrics.sRangefinderPin + 1, pinRangefinder.end || 0);
+  scrollMetrics.sAssembledPin = Math.max(scrollMetrics.sRangefinderEnd, pinAssembled.start || 0);
+  scrollMetrics.sAssembledEnd = Math.max(scrollMetrics.sAssembledPin + 1, pinAssembled.end || 0);
+  scrollMetrics.sOutroEnd = Math.max(scrollMetrics.sAssembledEnd + 1, maxScroll || 0);
 
   scrollMetrics.durBayonetPin = scrollMetrics.sBayonetEnd - scrollMetrics.sBayonetPin;
   scrollMetrics.durSensorTrans = Math.max(1, scrollMetrics.sSensorPin - scrollMetrics.sBayonetEnd);
@@ -1186,17 +1260,17 @@ function setupTimelineAndTriggers() {
     durRangefinderTrans, durRangefinderPin, durAssembledTrans, durAssembledPin, durOutro
   } = scrollMetrics;
 
-  // 2. Master timeline calibrated 1:1 with real scroll pixels
+  // 2. Master timeline calibrated 1:1 with real scroll pixels (scrub: true ensures lockstep with Lenis physics)
   masterTimeline = gsap.timeline({
     scrollTrigger: {
       trigger: '.scroll-container',
       start: 'top top',
       end: 'bottom bottom',
-      scrub: 1.0,
+      scrub: true,
       refreshPriority: 0,
       onUpdate: (self) => {
-        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-        const velocity = self && typeof self.getVelocity === 'function' ? self.getVelocity() : null;
+        const scrollY = self.scroll();
+        const velocity = (self && typeof self.getVelocity === 'function') ? self.getVelocity() : null;
         syncScrollState(scrollY, velocity);
       },
     },
@@ -1480,10 +1554,12 @@ if (audioBannerPill) {
   });
 }
 
-// Zero-latency direct window scroll listener for synchronized dial detent audio
+// Fallback direct window scroll listener (only active when Lenis is not driving ScrollTrigger)
 window.addEventListener('scroll', () => {
-  const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-  syncScrollState(scrollY);
+  if (!lenis) {
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+    syncScrollState(scrollY);
+  }
 }, { passive: true });
 
 window.addEventListener('pointermove', (e) => {
@@ -1625,6 +1701,7 @@ function render() {
     }
 
     camera.lookAt(lookTarget);
+    camera.updateMatrixWorld();
 
     // 6. Model Rotation, Scaling & Dynamic Pivot Placement
     modelRoot.rotation.x = anim.modelRotX - (state.mouse.y * 0.10 * zoomFactor);
@@ -1650,7 +1727,6 @@ function render() {
       modelRoot.visible = false;
     } else {
       modelRoot.visible = true;
-      const isChapter3 = (state.activeSubAssembly === 'DIALS');
 
       moduleExplodeVectors.forEach((modVec, mesh) => {
         const orig = originalTransforms.get(mesh);
@@ -1658,10 +1734,7 @@ function render() {
         if (!orig) return;
 
         let baseOp = 1.0;
-        if (isChapter3) {
-          // Chapter 3: Tactile Command - 100% fully assembled & complete Leica M11 body (all 66 meshes solid)
-          baseOp = 1.0;
-        } else if (subAssemblySets.BAYONET.has(mesh)) {
+        if (subAssemblySets.BAYONET.has(mesh)) {
           baseOp = anim.opBayonet;
         } else if (subAssemblySets.FRONT_MISC.has(mesh)) {
           baseOp = anim.opFrontMisc;
@@ -1675,25 +1748,25 @@ function render() {
           baseOp = anim.opBaseplate;
         }
 
-        const finalOp = isChapter3 ? 1.0 : Math.max(0, Math.min(1, baseOp * masterOp));
+        const finalOp = Math.max(0, Math.min(1, baseOp * masterOp));
         if (finalOp <= 0.005) {
           mesh.visible = false;
         } else {
           mesh.visible = true;
           if (mesh.material && mesh.material.opacity !== undefined) {
             mesh.material.opacity = finalOp;
-            mesh.material.depthWrite = isChapter3 ? true : (finalOp > 0.95);
+            mesh.material.depthWrite = (finalOp > 0.95);
           }
         }
 
-        // Macro explosion displacement (strictly 0 when explode == 0 or in Chapter 3)
-        const effectiveExplode = (isChapter3 || Math.abs(anim.explode) < 0.0001) ? 0.0 : anim.explode;
+        // Macro explosion displacement strictly matching GSAP timeline anim.explode
+        const effectiveExplode = Math.abs(anim.explode) < 0.0001 ? 0.0 : anim.explode;
         const macroZ = modVec.z * effectiveExplode;
         tempTargetPos.copy(orig.position);
         tempTargetPos.z += macroZ;
 
         let microX = 0, microY = 0, microZ = 0;
-        if (micro && !isChapter3) {
+        if (micro) {
           if (subAssemblySets.BAYONET.has(mesh)) {
             microX = micro.x * anim.subExplode1;
             microY = micro.y * anim.subExplode1;
@@ -1713,7 +1786,8 @@ function render() {
         tempTargetPos.y += microY;
         tempTargetPos.z += microZ;
 
-        mesh.position.lerp(tempTargetPos, isChapter3 ? 0.35 : 0.20);
+        // Exact 1:1 mathematical alignment - zero trailing lag, zero tearing on fast scroll!
+        mesh.position.copy(tempTargetPos);
       });
     }
 
