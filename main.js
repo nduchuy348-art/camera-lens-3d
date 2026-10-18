@@ -31,6 +31,12 @@ const btnFinishLabel = document.getElementById('btn-finish-label');
 const preloader = document.getElementById('preloader');
 const preloaderCounter = document.getElementById('preloader-counter-val');
 const preloaderBar = document.getElementById('preloader-bar');
+const preloaderBarWrap = document.getElementById('preloader-bar-wrap');
+const preloaderSub = document.getElementById('preloader-sub');
+const preloaderCta = document.getElementById('preloader-cta');
+const preloaderEnterBtn = document.getElementById('preloader-enter-btn');
+const audioBannerPill = document.getElementById('audio-banner-pill');
+const audioPillLabel = document.getElementById('audio-pill-label');
 
 // Dynamic SVG Hairline Leader Line
 const leaderLine = document.getElementById('leader-line');
@@ -45,6 +51,69 @@ const hotspotBadge = document.getElementById('hotspot-badge');
 const cardBayonet = document.getElementById('card-bayonet');
 const cardSensor = document.getElementById('card-sensor');
 const cardDials = document.getElementById('card-dials');
+
+/* ==========================================================================
+   WEB AUDIO ACTIVATION & LIFECYCLE MANAGEMENT
+   ========================================================================== */
+let preloaderDismissed = false;
+
+function dismissAudioPill() {
+  if (!audioBannerPill) return;
+  if (audioPillLabel) audioPillLabel.textContent = 'SOUND ENGAGED';
+  audioBannerPill.classList.add('active-dismiss');
+  setTimeout(() => {
+    audioBannerPill.style.display = 'none';
+  }, 450);
+}
+
+function showAudioPill() {
+  if (!audioBannerPill || audio.isUnlocked || !preloaderDismissed) return;
+  audioBannerPill.style.display = 'inline-flex';
+}
+
+function triggerAudioUnlock(welcomeShutter = true) {
+  audio.unlock(() => {
+    if (welcomeShutter && !state.welcomed) {
+      state.welcomed = true;
+      audio.playShutter();
+    }
+  }).then(() => {
+    if (audio.isUnlocked) {
+      if (!state.welcomed) {
+        state.welcomed = true;
+        if (welcomeShutter) audio.playShutter();
+      }
+      dismissAudioPill();
+    }
+  }).catch(() => {});
+}
+
+function dismissPreloader(isUserGesture = true) {
+  if (preloaderDismissed) return;
+  preloaderDismissed = true;
+
+  if (isUserGesture) {
+    triggerAudioUnlock(true);
+  }
+
+  if (preloader) {
+    preloader.classList.add('loaded');
+    setTimeout(() => {
+      preloader.classList.add('hidden');
+      preloader.style.display = 'none';
+      if (preloader.parentNode) {
+        preloader.parentNode.removeChild(preloader);
+      }
+    }, 950);
+  }
+
+  // If audio is still locked (e.g. dismissed via safety timeout), display floating helper
+  setTimeout(() => {
+    if (!audio.isUnlocked) {
+      showAudioPill();
+    }
+  }, 1200);
+}
 
 /* ==========================================================================
    THREE.JS SCENE, CAMERA & WEBGL RENDERER SETUP
@@ -514,21 +583,40 @@ loader.load(
     updateFinishMaterials();
     setupTimelineAndTriggers();
 
-    // Smooth curtain reveal wipe & authentic welcome shutter click
+    // Transition preloader to interactive Ready state with Enter Experience trigger
+    if (preloaderCounter) preloaderCounter.textContent = '100';
+    if (preloaderBar) preloaderBar.style.transform = 'scaleX(1)';
+
     if (preloader) {
-      preloader.classList.add('loaded');
-      audio.init().then(() => {
-        if (!state.welcomed) {
-          audio.playShutter();
-          if (audio.ctx && audio.ctx.state === 'running') {
-            state.welcomed = true;
-          }
+      preloader.classList.add('ready');
+      if (preloaderSub) preloaderSub.style.display = 'none';
+      if (preloaderBarWrap) preloaderBarWrap.style.display = 'none';
+      if (preloaderCta) preloaderCta.style.display = 'flex';
+
+      // Tap or click anywhere on the preloader screen to enter with mechanical shutter sound
+      preloader.addEventListener('click', () => dismissPreloader(true));
+      if (preloaderEnterBtn) {
+        preloaderEnterBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          dismissPreloader(true);
+        });
+      }
+
+      // Allow Spacebar or Enter key to trigger entry with sound
+      const preloaderKeyHandler = (e) => {
+        if (e.code === 'Space' || e.code === 'Enter') {
+          window.removeEventListener('keydown', preloaderKeyHandler);
+          dismissPreloader(true);
         }
-      });
+      };
+      window.addEventListener('keydown', preloaderKeyHandler);
+
+      // Auto-advance safety timeout after 4.5s so user is never permanently blocked
       setTimeout(() => {
-        preloader.classList.add('hidden');
-        preloader.style.display = 'none';
-      }, 950);
+        if (!preloaderDismissed) {
+          dismissPreloader(false);
+        }
+      }, 4500);
     }
   },
   (xhr) => {
@@ -761,18 +849,23 @@ function syncScrollState(scrollY, velocity) {
   // 1. Mechanical Dial Detent Audio Click & Chapter 3 Winding Ratchet on Scroll
   const currentDetent = Math.floor(scrollY / 45);
   if (currentDetent !== state.lastDetent) {
-    if (state.lastDetent !== null && state.welcomed) {
-      const inChapter3 = (state.activeSubAssembly === 'DIALS') ||
-        (scrollY >= scrollMetrics.sDialsPin - 30 && scrollY <= scrollMetrics.sDialsEnd + 30);
+    if (state.lastDetent !== null) {
+      if (audio.isUnlocked) {
+        const inChapter3 = (state.activeSubAssembly === 'DIALS') ||
+          (scrollY >= scrollMetrics.sDialsPin - 30 && scrollY <= scrollMetrics.sDialsEnd + 30);
 
-      if (inChapter3) {
-        // Chapter 3 Tactile Command: delicate mechanical winding gear ratchet clicks!
-        const toothPitch = speedMultiplier * (1.0 + ((Math.abs(currentDetent) % 3) * 0.03));
-        audio.playRatchet(toothPitch);
+        if (inChapter3) {
+          // Chapter 3 Tactile Command: delicate mechanical winding gear ratchet clicks!
+          const toothPitch = speedMultiplier * (1.0 + ((Math.abs(currentDetent) % 3) * 0.03));
+          audio.playRatchet(toothPitch);
+        } else {
+          const detentVariation = 1.0 + ((Math.abs(currentDetent) % 5) * 0.04);
+          const finalPitch = speedMultiplier * detentVariation;
+          audio.playTick(finalPitch);
+        }
       } else {
-        const detentVariation = 1.0 + ((Math.abs(currentDetent) % 5) * 0.04);
-        const finalPitch = speedMultiplier * detentVariation;
-        audio.playTick(finalPitch);
+        // Audio is still suspended pending user interaction (common on public Internet HTTPS)
+        showAudioPill();
       }
     }
     state.lastDetent = currentDetent;
@@ -1263,36 +1356,21 @@ function setupTimelineAndTriggers() {
 
 setupTimelineAndTriggers();
 
-/* ==========================================================================
-   INTERACTIVE EVENTS & BUTTON ACTIONS
-   ========================================================================== */
-// Auto-resume / initialize audio on first user gesture and fire welcome Leica shutter click
+// Auto-resume / initialize audio on first valid user gesture
 const unlockAudioOnGesture = () => {
-  const resumePromise = audio.init();
-  const checkUnlocked = () => {
-    if (audio.ctx && audio.ctx.state === 'running') {
-      if (state.isLoaded && !state.welcomed) {
-        state.welcomed = true;
-        audio.playShutter(); // Authentic welcome shutter click on first interaction!
-      }
-      if (state.isLoaded) {
-        const gestures = ['pointermove', 'mousemove', 'mouseenter', 'pointerdown', 'touchstart', 'click', 'wheel', 'scroll', 'keydown'];
-        gestures.forEach((evt) => {
-          window.removeEventListener(evt, unlockAudioOnGesture);
-        });
-      }
-    }
-  };
-
-  if (resumePromise && typeof resumePromise.then === 'function') {
-    resumePromise.then(checkUnlocked);
-  } else {
-    checkUnlocked();
-  }
+  triggerAudioUnlock(true);
 };
-['pointermove', 'mousemove', 'mouseenter', 'pointerdown', 'touchstart', 'click', 'wheel', 'scroll', 'keydown'].forEach((evt) => {
+['pointerdown', 'mousedown', 'touchstart', 'click', 'keydown'].forEach((evt) => {
   window.addEventListener(evt, unlockAudioOnGesture, { passive: true });
 });
+
+// Explicit audio activation button in floating header pill
+if (audioBannerPill) {
+  audioBannerPill.addEventListener('click', (e) => {
+    e.stopPropagation();
+    triggerAudioUnlock(true);
+  });
+}
 
 // Zero-latency direct window scroll listener for synchronized dial detent audio
 window.addEventListener('scroll', () => {

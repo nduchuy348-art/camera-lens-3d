@@ -14,19 +14,44 @@ class MechanicalAudioEngine {
 
   // Initialize or resume the Web Audio context on user gesture
   init() {
-    if (!this.ctx) {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (AudioCtx) {
-        this.ctx = new AudioCtx();
-        this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 1, this.ctx.currentTime);
-        this.masterGain.connect(this.ctx.destination);
+    try {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          this.ctx = new AudioCtx();
+          this.masterGain = this.ctx.createGain();
+          this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 1, this.ctx.currentTime);
+          this.masterGain.connect(this.ctx.destination);
+        }
       }
+      if (this.ctx && this.ctx.state === 'suspended') {
+        return this.ctx.resume().then(() => {
+          return this.ctx.state;
+        }).catch(() => {
+          return 'suspended';
+        });
+      }
+    } catch (e) {
+      console.warn('AudioContext init error:', e);
     }
-    if (this.ctx && this.ctx.state === 'suspended') {
-      return this.ctx.resume().catch(() => {});
-    }
-    return Promise.resolve();
+    return Promise.resolve(this.ctx ? this.ctx.state : 'unsupported');
+  }
+
+  // Check if Web Audio API is actively running and ready to emit sound
+  get isUnlocked() {
+    return !!(this.ctx && this.ctx.state === 'running');
+  }
+
+  // Explicit unlock method designed to be invoked directly inside user gesture handlers
+  unlock(callback) {
+    return this.init().then((state) => {
+      if (this.isUnlocked && typeof callback === 'function') {
+        try {
+          callback();
+        } catch (e) {}
+      }
+      return this.isUnlocked;
+    });
   }
 
   // Get current audio destination (Master Gain or AudioContext destination)
