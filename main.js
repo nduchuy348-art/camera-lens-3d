@@ -59,7 +59,7 @@ let preloaderDismissed = false;
 
 function dismissAudioPill() {
   if (!audioBannerPill) return;
-  if (audioPillLabel) audioPillLabel.textContent = 'SOUND ENGAGED';
+  if (audioPillLabel) audioPillLabel.textContent = 'SOUND: ON';
   audioBannerPill.classList.add('active-dismiss');
   setTimeout(() => {
     audioBannerPill.style.display = 'none';
