@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Leica M11 — The Essence of Pure Photography</title>
-  <link rel="stylesheet" href="styles.css?v=28">
+  <link rel="stylesheet" href="styles.css?v=29">
   
   <!-- Preconnect and Fonts: Outfit (Engineered Grotesk) & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -73,6 +73,7 @@
   <!-- Monumental Backdrop Typography (Layered Behind 3D Canvas) -->
   <div class="backdrop-watermark" aria-hidden="true">
     <div class="watermark-inner" id="watermark-inner">LEICA M11</div>
+    <div class="watermark-sub" id="watermark-sub">DAS WESENTLICHE</div>
   </div>
 
   <!-- 12-Column Hairline Editorial Grid Overlay -->
@@ -81,6 +82,31 @@
     <div class="grid-col"></div><div class="grid-col"></div><div class="grid-col"></div>
     <div class="grid-col"></div><div class="grid-col"></div><div class="grid-col"></div>
     <div class="grid-col"></div><div class="grid-col"></div><div class="grid-col"></div>
+  </div>
+
+  <!-- Optical Vernier HUD Overlay (Sub-micron Precision Engineering Callouts) -->
+  <div class="vernier-hud-container" id="vernier-hud" aria-hidden="true">
+    <div class="hud-callout" id="hud-bayonet">
+      <div class="hud-hairline"></div>
+      <div class="hud-tag">
+        <span class="hud-label">FLANGE DEPTH</span>
+        <b class="hud-val">27.80 mm &plusmn;0.002</b>
+      </div>
+    </div>
+    <div class="hud-callout" id="hud-sensor">
+      <div class="hud-hairline"></div>
+      <div class="hud-tag">
+        <span class="hud-label">BSI SILICON CORE</span>
+        <b class="hud-val">36.00 &times; 24.00 mm</b>
+      </div>
+    </div>
+    <div class="hud-callout" id="hud-dial">
+      <div class="hud-hairline"></div>
+      <div class="hud-tag">
+        <span class="hud-label">SHUTTER DETENT</span>
+        <b class="hud-val">1/4000s &mdash; 60s</b>
+      </div>
+    </div>
   </div>
 
   <!-- Dynamic Hairline Leader Line Overlay (SVG Projected Reticle) -->
@@ -279,11 +305,12 @@
   </main>
 
   <!-- Vendor Scripts -->
+  <script src="./vendor/lenis.min.js"></script>
   <script src="./vendor/gsap.min.js"></script>
   <script src="./vendor/ScrollTrigger.min.js"></script>
 
   <!-- Application Entry Point -->
-  <script type="module" src="./main.js?v=28"></script>
+  <script type="module" src="./main.js?v=29"></script>
 
 </body>
 </html>

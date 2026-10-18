@@ -25,6 +25,7 @@ const state = {
 // DOM Elements
 const canvas = document.getElementById('webgl-canvas');
 const watermarkInner = document.getElementById('watermark-inner');
+const watermarkSub = document.getElementById('watermark-sub');
 const btnReplay = document.getElementById('btn-replay');
 const btnToggleFinish = document.getElementById('btn-toggle-finish');
 const btnFinishLabel = document.getElementById('btn-finish-label');
@@ -37,6 +38,11 @@ const preloaderCta = document.getElementById('preloader-cta');
 const preloaderEnterBtn = document.getElementById('preloader-enter-btn');
 const audioBannerPill = document.getElementById('audio-banner-pill');
 const audioPillLabel = document.getElementById('audio-pill-label');
+
+// Optical Vernier HUD Callouts
+const hudBayonet = document.getElementById('hud-bayonet');
+const hudSensor = document.getElementById('hud-sensor');
+const hudDial = document.getElementById('hud-dial');
 
 // Dynamic SVG Hairline Leader Line
 const leaderLine = document.getElementById('leader-line');
@@ -51,6 +57,33 @@ const hotspotBadge = document.getElementById('hotspot-badge');
 const cardBayonet = document.getElementById('card-bayonet');
 const cardSensor = document.getElementById('card-sensor');
 const cardDials = document.getElementById('card-dials');
+
+/* ==========================================================================
+   LENIS SMOOTH SCROLL ENGINE (Claude Motion Physical Momentum)
+   ========================================================================== */
+let lenis = null;
+if (typeof window !== 'undefined' && typeof window.Lenis !== 'undefined') {
+  lenis = new window.Lenis({
+    duration: 1.15,
+    easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+    orientation: 'vertical',
+    gestureOrientation: 'vertical',
+    smoothWheel: true,
+    wheelMultiplier: 1.0,
+    touchMultiplier: 1.8,
+    infinite: false,
+  });
+
+  lenis.on('scroll', (e) => {
+    ScrollTrigger.update();
+    syncScrollState(e.scroll, e.velocity);
+  });
+
+  gsap.ticker.add((time) => {
+    lenis.raf(time * 1000);
+  });
+  gsap.ticker.lagSmoothing(0);
+}
 
 /* ==========================================================================
    WEB AUDIO ACTIVATION & LIFECYCLE MANAGEMENT
@@ -792,6 +825,81 @@ function updateHotspotPositions() {
 }
 
 /* ==========================================================================
+   OPTICAL VERNIER HUD 3D-TO-2D SCREEN PROJECTION (Awwwards Technical Reticle)
+   ========================================================================== */
+const hudProjPos = new THREE.Vector3();
+function updateVernierHUD() {
+  if (!modelRoot) return;
+
+  const widthHalf = window.innerWidth / 2;
+  const heightHalf = window.innerHeight / 2;
+  const mode = state.activeSubAssembly;
+
+  // 1. Bayonet Flange Callout
+  if (hudBayonet) {
+    if (mode === 'BAYONET') {
+      hudProjPos.copy(bayonetCenter);
+      hudProjPos.applyMatrix4(modelRoot.matrixWorld);
+      hudProjPos.project(camera);
+
+      if (hudProjPos.z < 1.0) {
+        const x = (hudProjPos.x * widthHalf) + widthHalf;
+        const y = -(hudProjPos.y * heightHalf) + heightHalf;
+        hudBayonet.style.left = `${Math.round(x + 24)}px`;
+        hudBayonet.style.top = `${Math.round(y - 20)}px`;
+        hudBayonet.classList.add('active');
+      } else {
+        hudBayonet.classList.remove('active');
+      }
+    } else {
+      hudBayonet.classList.remove('active');
+    }
+  }
+
+  // 2. Sensor Core Callout
+  if (hudSensor) {
+    if (mode === 'SENSOR') {
+      hudProjPos.copy(sensorCenter);
+      hudProjPos.applyMatrix4(modelRoot.matrixWorld);
+      hudProjPos.project(camera);
+
+      if (hudProjPos.z < 1.0) {
+        const x = (hudProjPos.x * widthHalf) + widthHalf;
+        const y = -(hudProjPos.y * heightHalf) + heightHalf;
+        hudSensor.style.left = `${Math.round(x + 24)}px`;
+        hudSensor.style.top = `${Math.round(y - 20)}px`;
+        hudSensor.classList.add('active');
+      } else {
+        hudSensor.classList.remove('active');
+      }
+    } else {
+      hudSensor.classList.remove('active');
+    }
+  }
+
+  // 3. Shutter Speed Dial Callout
+  if (hudDial) {
+    if (mode === 'DIALS') {
+      hudProjPos.copy(shutterDialCenter);
+      hudProjPos.applyMatrix4(modelRoot.matrixWorld);
+      hudProjPos.project(camera);
+
+      if (hudProjPos.z < 1.0) {
+        const x = (hudProjPos.x * widthHalf) + widthHalf;
+        const y = -(hudProjPos.y * heightHalf) + heightHalf;
+        hudDial.style.left = `${Math.round(x + 24)}px`;
+        hudDial.style.top = `${Math.round(y - 20)}px`;
+        hudDial.classList.add('active');
+      } else {
+        hudDial.classList.remove('active');
+      }
+    } else {
+      hudDial.classList.remove('active');
+    }
+  }
+}
+
+/* ==========================================================================
    GSAP & SCROLLTRIGGER SYNCHRONIZED CHOREOGRAPHY & HAPTIC DETENTS
    ========================================================================== */
 let masterTimeline = null;
@@ -1383,11 +1491,30 @@ window.addEventListener('pointermove', (e) => {
   state.mouse.targetY = -(e.clientY / window.innerHeight) * 2 + 1;
 });
 
-// Replay Button (Trigger Leica focal-plane shutter release and scroll to top)
+// Replay Button (Trigger Leica focal-plane shutter release and smooth scroll to top via Lenis)
 if (btnReplay) {
   btnReplay.addEventListener('click', () => {
     audio.playShutter();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (lenis) {
+      lenis.scrollTo(0, { duration: 1.6 });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  });
+}
+
+// Magnetic Button Cursor Hover Interaction (Claude Motion Micro-interaction)
+if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+  document.querySelectorAll('.preloader-enter-btn, .action-btn, .audio-banner-pill').forEach((btn) => {
+    btn.addEventListener('mousemove', (e) => {
+      const rect = btn.getBoundingClientRect();
+      const x = e.clientX - rect.left - rect.width / 2;
+      const y = e.clientY - rect.top - rect.height / 2;
+      btn.style.transform = `translate(${x * 0.18}px, ${y * 0.18}px)`;
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.transform = '';
+    });
   });
 }
 
@@ -1450,16 +1577,24 @@ function render() {
     state.mouse.x += (state.mouse.targetX - state.mouse.x) * 0.05;
     state.mouse.y += (state.mouse.targetY - state.mouse.y) * 0.05;
 
-    // 2. Parallax Watermark Backdrop Drift
+    // 2. Parallax Watermark Backdrop Drift (Counter-Parallax Depth)
     if (watermarkInner) {
-      watermarkInner.style.transform = `translate(${-state.mouse.x * 25}px, ${-state.mouse.y * 15}px)`;
+      watermarkInner.style.transform = `translate(${-state.mouse.x * 24}px, ${-state.mouse.y * 14}px)`;
+    }
+    if (watermarkSub) {
+      watermarkSub.style.transform = `translate(${-state.mouse.x * 38}px, ${-state.mouse.y * 20}px)`;
     }
 
-    // 3. Dynamic Specular Key Light Tracking
+    // 3. Dynamic Specular Key & Rim Light Tracking (Chamfer Sheen)
     keyLight.position.set(
       2.4 + state.mouse.x * 1.5,
       3.5 + state.mouse.y * 1.2,
       3.0
+    );
+    rimLight.position.set(
+      -2.5 * Math.sin(anim.modelRotY + 0.8),
+      3.2 + Math.cos(anim.modelRotY * 0.5) * 0.5,
+      -2.0 * Math.cos(anim.modelRotY + 0.8)
     );
 
     // 4. Orbital Coordinate Ring
@@ -1468,11 +1603,17 @@ function render() {
       orbitalRingMat.opacity = anim.orbitalOpacity * 0.16;
     }
 
-    // 5. Camera Framing & Micro-Shake (Elevated View Never Looking From Underneath)
+    // 5. Harmonic Ambient Breathing & Camera Framing ("Nothing is dead-still")
+    const elapsed = performance.now() * 0.001;
+    const isDwell = smoothedVelocity < 40;
+    const breathingAmp = isDwell ? 0.0022 : 0.0004;
+    const breathY = Math.sin(elapsed * 1.1) * breathingAmp;
+    const breathRotY = Math.cos(elapsed * 0.85) * (breathingAmp * 0.7);
+
     const zoomFactor = Math.min(1.0, Math.max(0.25, anim.camZ / 2.0));
 
     camera.position.x = anim.camX + (state.mouse.x * 0.035 * zoomFactor);
-    camera.position.y = anim.camY + (state.mouse.y * 0.035 * zoomFactor);
+    camera.position.y = anim.camY + breathY + (state.mouse.y * 0.035 * zoomFactor);
     camera.position.z = anim.camZ;
 
     lookTarget.set(anim.lookX, anim.lookY, anim.lookZ);
@@ -1487,7 +1628,7 @@ function render() {
 
     // 6. Model Rotation, Scaling & Dynamic Pivot Placement
     modelRoot.rotation.x = anim.modelRotX - (state.mouse.y * 0.10 * zoomFactor);
-    modelRoot.rotation.y = anim.modelRotY + (state.mouse.x * 0.15 * zoomFactor);
+    modelRoot.rotation.y = anim.modelRotY + breathRotY + (state.mouse.x * 0.15 * zoomFactor);
     modelRoot.rotation.z = anim.modelRotZ;
 
     modelRoot.scale.set(anim.modelScale, anim.modelScale, anim.modelScale);
@@ -1579,6 +1720,7 @@ function render() {
     // 8. Update Projections
     updateLeaderLine();
     updateHotspotPositions();
+    updateVernierHUD();
   }
 
   renderer.render(scene, camera);

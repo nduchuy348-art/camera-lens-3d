@@ -46,6 +46,23 @@ html {
   overflow-x: clip;
 }
 
+/* Lenis Smooth Scroll Standards (Claude Motion Physical Inertia) */
+html.lenis, html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: var(--bg-canvas) !important;
@@ -335,6 +352,7 @@ html::-webkit-scrollbar-thumb:hover {
   inset: 0;
   z-index: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   pointer-events: none;
@@ -351,6 +369,83 @@ html::-webkit-scrollbar-thumb:hover {
   user-select: none;
   transform: translateY(-2vh);
   will-change: transform;
+}
+.watermark-sub {
+  font-family: var(--font-mono);
+  font-size: clamp(0.85rem, 1.8vw, 1.5rem);
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  color: var(--ink-primary);
+  opacity: 0.035;
+  text-transform: uppercase;
+  user-select: none;
+  margin-top: -1rem;
+}
+
+/* Optical Vernier HUD Overlay (Sub-micron Precision Engineering Callouts, Z-Index: 4) */
+.vernier-hud-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+.hud-callout {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.4s var(--ease-out-expo), transform 0.4s var(--ease-out-expo);
+  pointer-events: none;
+}
+.hud-callout.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+.hud-hairline {
+  width: 38px;
+  height: 1px;
+  background: var(--leica-red);
+  position: relative;
+}
+.hud-hairline::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--leica-red);
+}
+.hud-tag {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.4rem 0.75rem;
+  background: rgba(253, 253, 253, 0.94);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(24, 27, 30, 0.14);
+  border-radius: 4px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+.hud-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--ink-secondary);
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+}
+.hud-val {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
 }
 
 /* Hairline Grid Overlay (12-Column Editorial Swiss Lines, Z-Index: 0) */
